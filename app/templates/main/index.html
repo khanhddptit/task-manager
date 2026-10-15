@@ -1,0 +1,16 @@
+{% extends "base.html" %}
+{% block title %}Trang chủ | Task Manager{% endblock %}
+{% block content %}
+<section class="card border-0 shadow-sm">
+    <div class="card-body p-4 p-md-5">
+        <span class="badge text-bg-primary mb-3">Bộ khung dự án</span>
+        <h1 class="display-6">Quản lý công việc cùng nhóm</h1>
+        <p class="lead text-secondary">
+            Nền tảng Flask, Jinja2 và SQLite để cả nhóm phát triển ứng dụng quản lý công việc.
+        </p>
+        <p>Đã có cấu trúc module, giao diện dùng chung và cấu hình session.
+            Đăng nhập và CRUD công việc sẽ được phát triển ở các bước tiếp theo.</p>
+        <a class="btn btn-primary" href="{{ url_for('tasks.index') }}">Xem module công việc</a>
+    </div>
+</section>
+{% endblock %}

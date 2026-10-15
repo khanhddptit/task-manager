@@ -1,0 +1,7 @@
+{% extends "base.html" %}
+{% block title %}Không tìm thấy trang | Task Manager{% endblock %}
+{% block content %}
+<h1>404 — Không tìm thấy trang</h1>
+<p>Đường dẫn không tồn tại hoặc đã được thay đổi.</p>
+<a class="btn btn-primary" href="{{ url_for('main.index') }}">Về trang chủ</a>
+{% endblock %}

@@ -1,0 +1,7 @@
+{% extends "base.html" %}
+{% block title %}Lỗi hệ thống | Task Manager{% endblock %}
+{% block content %}
+<h1>500 — Lỗi hệ thống</h1>
+<p>Không thể xử lý yêu cầu lúc này. Vui lòng thử lại sau.</p>
+<a class="btn btn-primary" href="{{ url_for('main.index') }}">Về trang chủ</a>
+{% endblock %}
