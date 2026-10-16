@@ -10,7 +10,9 @@ Bộ khung dùng chung cho team phát triển ứng dụng quản lý công vi�
 - Schema 7 bảng: `user`, `workspace`, `workspace_member`, `project`, `project_member`, `task`, `comment`; lệnh `init-db` không xóa dữ liệu hiện có.
 - Cấu hình Session, biến môi trường và bộ kiểm thử pytest.
 
-**Chưa triển khai:** đăng ký/đăng nhập, phân quyền, CRUD, tìm kiếm/lọc công việc. Trang công việc chỉ là placeholder, không đọc dữ liệu thật. Các package `models` và `services` là vị trí để team bổ sung code, chưa có nghiệp vụ.
+**Đã triển khai:** API đăng ký/đăng nhập/đăng xuất và API tạo/liệt kê workspace. Người tạo workspace được thêm vào workspace với vai trò `owner`.
+
+**Chưa triển khai:** phân quyền theo role, CRUD project/task, tìm kiếm/lọc công việc. Trang công việc chỉ là placeholder, không đọc dữ liệu thật.
 
 ## 2. Tech stack
 
@@ -156,9 +158,20 @@ erDiagram
 
 Dùng `session` tích hợp sẵn của Flask, không cần extension. Cookie được **ký, không mã hóa**: người dùng vẫn có thể đọc nội dung. Chỉ lưu dữ liệu nhỏ như `user_id`, không lưu mật khẩu, token bí mật hay toàn bộ danh sách task.
 
-Khi bổ sung đăng nhập: xác thực bằng hash từ Werkzeug, gọi `session.clear()` trước khi gán `session["user_id"]`, đặt `session.permanent = True` nếu muốn áp dụng thời gian sống 8 giờ. Đăng xuất gọi `session.clear()`. Cấu hình cookie hiện có `HttpOnly`, `SameSite=Lax`; HTTPS phải bật `Secure`. Bộ khung chỉ cấu hình và kiểm thử session, chưa có route đăng nhập.
+API tài khoản nằm dưới `/auth`: đăng ký lưu password hash bằng Werkzeug; đăng nhập xóa session cũ trước khi lưu `user_id` và đặt session có thời hạn 8 giờ; đăng xuất xóa session. Cookie có `HttpOnly`, `SameSite=Lax`; HTTPS phải bật `Secure`.
 
-Trước khi thêm form/request thay đổi dữ liệu, bổ sung CSRF protection (ví dụ Flask-WTF), validation và kiểm tra chủ sở hữu ở server. `SameSite` không thay thế CSRF protection; không cho phép thay đổi dữ liệu bằng GET. Mọi truy vấn task sau khi có đăng nhập phải giới hạn theo project mà người dùng được phép truy cập; quyền sửa/xóa phải kiểm tra role tương ứng, không chỉ kiểm tra `assignee_id`.
+### Workspace API
+
+Hai endpoint yêu cầu đăng nhập và trả JSON. `POST` cần CSRF token; lấy token từ `GET /auth/csrf` hoặc dùng token `csrf_token` trả về khi đăng nhập, rồi gửi trong header `X-CSRFToken`.
+
+| Method và path | Request | Thành công |
+| --- | --- | --- |
+| `POST /workspaces` | JSON: `name` (chuỗi không rỗng), `description` (chuỗi, tùy chọn; mặc định `""`) | `201` với `{"workspace": {"id": 1, "name": "Team", "description": "", "created_at": "...", "updated_at": "...", "role": "owner"}}` |
+| `GET /workspaces` | Không có body | `200` với `{"workspaces": [...]}` |
+
+Tên và mô tả được loại bỏ khoảng trắng ở hai đầu. Người dùng gửi request POST luôn là chủ sở hữu; các trường ID thành viên do client gửi không được dùng. GET chỉ trả các workspace mà người đăng nhập là thành viên, kèm role của họ; danh sách sắp xếp mới nhất trước (`created_at DESC`, sau đó `id DESC`). Người dùng chưa tham gia workspace nhận mảng rỗng. Lỗi API có JSON thống nhất và response không được cache (`Cache-Control: no-store`).
+
+CSRF protection bằng Flask-WTF được bật toàn cục cho các request thay đổi dữ liệu; `SameSite` không thay thế CSRF protection. Không cho phép thay đổi dữ liệu bằng GET. Mọi truy vấn task sau khi có đăng nhập phải giới hạn theo project mà người dùng được phép truy cập; quyền sửa/xóa phải kiểm tra role tương ứng, không chỉ kiểm tra `assignee_id`.
 
 ## 6. Convention chính cho team
 
@@ -209,8 +222,8 @@ Test dùng database trong thư mục tạm, không tác động database local. 
 | Mảng | Trách nhiệm |
 | --- | --- |
 | Nền tảng/database | Config, schema/migration, helper, test infrastructure |
-| Tài khoản | Đăng ký, đăng nhập/đăng xuất, password hash, session, phân quyền |
+| Tài khoản | Mở rộng phân quyền theo role và kiểm tra quyền truy cập |
 | Công việc | CRUD, trạng thái, hạn hoàn thành, lọc theo người dùng |
 | Giao diện/QA | Template dùng chung, responsive, thông báo lỗi, kiểm thử |
 
-Thống nhất schema, endpoint và dữ liệu đầu vào/đầu ra trước khi phát triển song song. Hoàn thiện đăng nhập, quyền sở hữu và CSRF trước khi công khai chức năng thay đổi dữ liệu.
+Thống nhất schema, endpoint và dữ liệu đầu vào/đầu ra trước khi phát triển song song. Hoàn thiện phân quyền và kiểm tra quyền sở hữu trước khi công khai thêm chức năng thay đổi dữ liệu.
