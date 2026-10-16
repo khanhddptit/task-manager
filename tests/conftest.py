@@ -2,6 +2,7 @@ import pytest
 
 from app import create_app
 from app.db import init_db
+from app.services.auth_service import register_user
 
 
 @pytest.fixture()
@@ -20,3 +21,9 @@ def app(tmp_path):
 @pytest.fixture()
 def client(app):
     return app.test_client()
+
+
+@pytest.fixture()
+def user_id(app):
+    with app.app_context():
+        return register_user("demo", "correct-password")

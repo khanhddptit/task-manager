@@ -22,7 +22,7 @@ Bộ khung dùng chung cho team phát triển ứng dụng quản lý công vi�
 | Template | Jinja2 | Kế thừa layout, render dữ liệu; đi kèm Flask |
 | Cơ sở dữ liệu | SQLite, module `sqlite3` | Lưu dữ liệu cục bộ; có sẵn trong Python |
 | Session | Flask signed-cookie session | Lưu trạng thái nhỏ trong cookie có chữ ký |
-| Cấu hình | python-dotenv | Nạp cấu hình từ `.env` |
+| Cấu hình | python-dotenv | Nạp cấu hình từ `.env` |`
 | Kiểm thử | pytest | Kiểm tra route, database, session và cấu hình |
 
 Không cần cài SQLite server, SQLAlchemy, Flask-Session hay Node.js. Flask tự cài các dependency như Jinja2, Werkzeug và Click. Trang vẫn trả HTML khi mất mạng, nhưng cần Internet để tải Bootstrap từ CDN. Chưa dùng các component cần Bootstrap JavaScript.

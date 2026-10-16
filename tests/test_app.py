@@ -55,11 +55,11 @@ def test_secure_cookie_from_environment(monkeypatch):
     assert app.config["SECRET_KEY"] == "test-only-environment-key"
 
 
-def test_session_and_flash(app, client):
+def test_session_and_flash(app, client, user_id):
     @app.get("/test-session")
     def set_session():
         session.clear()
-        session["user_id"] = 1
+        session["user_id"] = user_id
         session.permanent = True
         flash("<script>alert('test')</script>", "success")
         return "ok"
@@ -70,7 +70,7 @@ def test_session_and_flash(app, client):
     assert "SameSite=Lax" in cookie
     assert app.config["PERMANENT_SESSION_LIFETIME"] == timedelta(hours=8)
     with client.session_transaction() as stored_session:
-        assert stored_session["user_id"] == 1
+        assert stored_session["user_id"] == user_id
 
     response = client.get("/")
     html = response.get_data(as_text=True)

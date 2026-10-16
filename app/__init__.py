@@ -1,7 +1,11 @@
 from pathlib import Path
 
 from dotenv import load_dotenv
-from flask import Flask, render_template
+from flask import Flask, render_template, request
+from flask_wtf.csrf import CSRFError, CSRFProtect
+from werkzeug.exceptions import HTTPException
+
+from app.auth.responses import api_error
 
 from app.config import Config, environment_config
 
@@ -26,19 +30,50 @@ def create_app(test_config=None):
     Path(app.instance_path).mkdir(parents=True, exist_ok=True)
 
     from app import db
+    from app.auth import bp as auth_bp
     from app.main import bp as main_bp
     from app.tasks import bp as tasks_bp
 
     db.init_app(app)
+    app.register_blueprint(auth_bp)
+    CSRFProtect(app)
     app.register_blueprint(main_bp)
     app.register_blueprint(tasks_bp)
 
+    def is_auth_request():
+        return request.path == "/auth" or request.path.startswith("/auth/")
+
+    @app.errorhandler(CSRFError)
+    def csrf_error(error):
+        return api_error("csrf_failed", "CSRF token không hợp lệ hoặc đã hết hạn.", 400)
+
+    @app.errorhandler(HTTPException)
+    def http_error(error):
+        if not is_auth_request():
+            return error
+        response = error.get_response()
+        response.data = app.json.dumps({
+            "error": {"code": error.name.lower().replace(" ", "_"), "message": error.name}
+        })
+        response.content_type = "application/json"
+        return response
+
+    @app.after_request
+    def prevent_private_response_caching(response):
+        if is_auth_request():
+            response.headers["Cache-Control"] = "no-store"
+        return response
+
     @app.errorhandler(404)
     def not_found(error):
+        if is_auth_request():
+            return http_error(error)
         return render_template("errors/404.html"), 404
 
     @app.errorhandler(500)
     def server_error(error):
+        if is_auth_request():
+            return api_error("internal_server_error", "Không thể xử lý yêu cầu lúc này.", 500)
         return render_template("errors/500.html"), 500
 
     return app
