@@ -115,13 +115,13 @@ Schema nằm trong [app/schema.sql](app/schema.sql), sử dụng tên bảng **s
 
 | Bảng | Cột chính / chức năng |
 | --- | --- |
-| `user` | `id`, `username` duy nhất, `password_hash`, `created_at` |
-| `workspace` | `id`, `name`, `description`, `created_at`, `updated_at` |
+| `user` | `id`, `username` duy nhất, `password_hash`, `created_at`, `updated_at` |
+| `workspace` | `id`, `name`, `description`, `created_by`, `updated_by`, `created_at`, `updated_at` |
 | `workspace_member` | Khóa chính ghép (`workspace_id`, `user_id`), `role`, `joined_at` |
-| `project` | `id`, `workspace_id`, `name`, `description`, `created_at`, `updated_at` |
+| `project` | `id`, `workspace_id`, `name`, `description`, `created_by`, `updated_by`, `created_at`, `updated_at` |
 | `project_member` | Khóa chính ghép (`project_id`, `user_id`), `workspace_id`, `role`, `joined_at` |
-| `task` | `id`, `project_id`, `created_by`, `assignee_id`, `title`, `description`, `status`, `due_date`, `created_at`, `updated_at` |
-| `comment` | `id`, `task_id`, `author_id`, `content`, `created_at`, `updated_at` |
+| `task` | `id`, `project_id`, `created_by`, `assignee_id`, `updated_by`, `title`, `description`, `status`, `due_date`, `created_at`, `updated_at` |
+| `comment` | `id`, `task_id`, `author_id`, `updated_by`, `content`, `created_at`, `updated_at` |
 
 ```mermaid
 erDiagram
@@ -141,7 +141,8 @@ erDiagram
 - Member có role `owner`, `admin`, `member` ở từng cấp, mặc định `member`. Role workspace và project độc lập; schema chưa định nghĩa kế thừa quyền.
 - Khóa ngoại ghép bảo đảm project member phải thuộc **đúng workspace của project**, kể cả khi cập nhật; không cho phép membership trùng.
 - Task có thể chưa được giao (`assignee_id = NULL`) hoặc được giao cho đúng một project member. Chuyển project khi còn người được giao không thuộc project mới sẽ bị từ chối.
-- `created_by` và `author_id` tham chiếu user và có thể NULL để giữ lịch sử khi user bị xóa. Khi tạo mới, service phải lấy tác giả từ session và kiểm tra quyền trong project, không tin ID gửi từ client.
+- Các trường audit người dùng (`created_by`, `updated_by` trên `workspace`, `project`, `task`; `author_id`, `updated_by` trên `comment`) tham chiếu `user(id)` và sử dụng `ON DELETE SET NULL` để bảo toàn lịch sử dữ liệu khi user bị xóa. Khi tạo/sửa bản ghi, service lấy ID tác giả từ session và kiểm tra quyền, không tin ID gửi từ client.
+- Khi cập nhật dữ liệu, quy ước bắt buộc gán `updated_at = CURRENT_TIMESTAMP` và `updated_by = <user_id_thực_hiện>`.
 - Trạng thái công việc: `todo`, `in_progress`, `done`; tên workspace/project, username, tiêu đề và nội dung comment không được rỗng hoặc chỉ gồm dấu cách.
 - Xóa workspace → project/member → task → comment theo `ON DELETE CASCADE`; xóa project hoặc task cũng xóa dữ liệu con tương ứng.
 - Không xóa member/user đang được giao task: phải bỏ giao hoặc giao lại các task trước trong cùng transaction. Xóa membership không xóa nội dung task/comment. Sau khi bỏ giao, xóa user sẽ xóa membership, đặt `created_by`/`author_id` về NULL và giữ nội dung.
