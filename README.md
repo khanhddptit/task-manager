@@ -7,23 +7,23 @@ Bộ khung dùng chung cho team phát triển ứng dụng quản lý công vi�
 - Application factory `create_app()` và Blueprint riêng cho từng module.
 - Trang chủ, trang công việc mẫu, layout Bootstrap/Jinja2 dùng chung, trang lỗi 404/500.
 - Kết nối SQLite theo application context, tự đóng kết nối và bật khóa ngoại.
-- Schema 7 bảng: `user`, `workspace`, `workspace_member`, `project`, `project_member`, `task`, `comment`; lệnh `init-db` không xóa dữ liệu hiện có.
+- Schema gồm 7 bảng nghiệp vụ (`user`, `workspace`, `workspace_member`, `project`, `project_member`, `task`, `comment`) và bảng `schema_migration` theo dõi migration; lệnh `init-db` áp dụng migration và tạo index, không xóa dữ liệu hiện có.
 - Cấu hình Session, biến môi trường và bộ kiểm thử pytest.
 
 **Chưa triển khai:** đăng ký/đăng nhập, phân quyền, CRUD, tìm kiếm/lọc công việc. Trang công việc chỉ là placeholder, không đọc dữ liệu thật. Các package `models` và `services` là vị trí để team bổ sung code, chưa có nghiệp vụ.
 
 ## 2. Tech stack
 
-| Thành phần | Công nghệ | Vai trò |
-| --- | --- | --- |
-| Ngôn ngữ | Python 3.11+ | Xử lý nghiệp vụ; môi trường khởi tạo dùng Python 3.11 |
-| Web framework | Flask 3.1 | Routing, request/response, Blueprint, Session |
-| Giao diện | HTML5, Bootstrap 5.3.3 | Layout responsive; Bootstrap CSS qua CDN có SRI |
-| Template | Jinja2 | Kế thừa layout, render dữ liệu; đi kèm Flask |
-| Cơ sở dữ liệu | SQLite, module `sqlite3` | Lưu dữ liệu cục bộ; có sẵn trong Python |
-| Session | Flask signed-cookie session | Lưu trạng thái nhỏ trong cookie có chữ ký |
-| Cấu hình | python-dotenv | Nạp cấu hình từ `.env` |`
-| Kiểm thử | pytest | Kiểm tra route, database, session và cấu hình |
+| Thành phần    | Công nghệ                   | Vai trò                                               |
+| ------------- | --------------------------- | ----------------------------------------------------- | --- |
+| Ngôn ngữ      | Python 3.11+                | Xử lý nghiệp vụ; môi trường khởi tạo dùng Python 3.11 |
+| Web framework | Flask 3.1                   | Routing, request/response, Blueprint, Session         |
+| Giao diện     | HTML5, Bootstrap 5.3.3      | Layout responsive; Bootstrap CSS qua CDN có SRI       |
+| Template      | Jinja2                      | Kế thừa layout, render dữ liệu; đi kèm Flask          |
+| Cơ sở dữ liệu | SQLite, module `sqlite3`    | Lưu dữ liệu cục bộ; có sẵn trong Python               |
+| Session       | Flask signed-cookie session | Lưu trạng thái nhỏ trong cookie có chữ ký             |
+| Cấu hình      | python-dotenv               | Nạp cấu hình từ `.env`                                | `   |
+| Kiểm thử      | pytest                      | Kiểm tra route, database, session và cấu hình         |
 
 Không cần cài SQLite server, SQLAlchemy, Flask-Session hay Node.js. Flask tự cài các dependency như Jinja2, Werkzeug và Click. Trang vẫn trả HTML khi mất mạng, nhưng cần Internet để tải Bootstrap từ CDN. Chưa dùng các component cần Bootstrap JavaScript.
 
@@ -35,7 +35,9 @@ task-manager/
 │   ├── __init__.py          # Application factory, đăng ký Blueprint và trang lỗi
 │   ├── config.py            # Cấu hình chung và đọc biến môi trường
 │   ├── db.py                # Kết nối SQLite, teardown, lệnh init-db
-│   ├── schema.sql           # Bảng và index ban đầu
+│   ├── schema.sql           # Định nghĩa bảng
+│   ├── migrations.py        # Migration schema có version
+│   ├── indexes.sql          # Index tạo sau khi áp dụng migration
 │   ├── main/
 │   │   ├── __init__.py
 │   │   └── routes.py        # Trang chủ
@@ -98,10 +100,10 @@ Các lệnh dùng trực tiếp Python trong `.venv`, không cần activate hay 
 
 ### Cấu hình môi trường
 
-| Biến | Mặc định | Ý nghĩa |
-| --- | --- | --- |
-| `SECRET_KEY` | Không có, bắt buộc | Ký session cookie; giữ ổn định giữa các lần chạy/worker |
-| `SESSION_COOKIE_SECURE` | `false` | Đặt `true` khi chạy HTTPS; local HTTP để `false` |
+| Biến                    | Mặc định           | Ý nghĩa                                                 |
+| ----------------------- | ------------------ | ------------------------------------------------------- |
+| `SECRET_KEY`            | Không có, bắt buộc | Ký session cookie; giữ ổn định giữa các lần chạy/worker |
+| `SESSION_COOKIE_SECURE` | `false`            | Đặt `true` khi chạy HTTPS; local HTTP để `false`        |
 
 Biến môi trường hệ thống được ưu tiên hơn `.env`. Database mặc định nằm tại `instance/task_manager.sqlite3`; test ghi đè khóa cấu hình `DATABASE` để dùng file tạm. Không commit `.env`, `.venv`, database hoặc dữ liệu người dùng.
 
@@ -113,15 +115,15 @@ Biến môi trường hệ thống được ưu tiên hơn `.env`. Database mặ
 
 Schema nằm trong [app/schema.sql](app/schema.sql), sử dụng tên bảng **số ít**.
 
-| Bảng | Cột chính / chức năng |
-| --- | --- |
-| `user` | `id`, `username` duy nhất, `password_hash`, `created_at`, `updated_at` |
-| `workspace` | `id`, `name`, `description`, `created_by`, `updated_by`, `created_at`, `updated_at` |
-| `workspace_member` | Khóa chính ghép (`workspace_id`, `user_id`), `role`, `joined_at` |
-| `project` | `id`, `workspace_id`, `name`, `description`, `created_by`, `updated_by`, `created_at`, `updated_at` |
-| `project_member` | Khóa chính ghép (`project_id`, `user_id`), `workspace_id`, `role`, `joined_at` |
-| `task` | `id`, `project_id`, `created_by`, `assignee_id`, `updated_by`, `title`, `description`, `status`, `due_date`, `created_at`, `updated_at` |
-| `comment` | `id`, `task_id`, `author_id`, `updated_by`, `content`, `created_at`, `updated_at` |
+| Bảng               | Cột chính / chức năng                                                                                                                   |
+| ------------------ | --------------------------------------------------------------------------------------------------------------------------------------- |
+| `user`             | `id`, `username` duy nhất, `password_hash`, `created_at`, `updated_at`                                                                  |
+| `workspace`        | `id`, `name`, `description`, `created_by`, `updated_by`, `created_at`, `updated_at`                                                     |
+| `workspace_member` | Khóa chính ghép (`workspace_id`, `user_id`), `role`, `joined_at`                                                                        |
+| `project`          | `id`, `workspace_id`, `name`, `description`, `created_by`, `updated_by`, `created_at`, `updated_at`                                     |
+| `project_member`   | Khóa chính ghép (`project_id`, `user_id`), `workspace_id`, `role`, `joined_at`                                                          |
+| `task`             | `id`, `project_id`, `created_by`, `assignee_id`, `updated_by`, `title`, `description`, `status`, `due_date`, `created_at`, `updated_at` |
+| `comment`          | `id`, `task_id`, `author_id`, `updated_by`, `content`, `created_at`, `updated_at`                                                       |
 
 ```mermaid
 erDiagram
@@ -206,11 +208,11 @@ Test dùng database trong thư mục tạm, không tác động database local. 
 
 ## 8. Gợi ý phân công tiếp theo
 
-| Mảng | Trách nhiệm |
-| --- | --- |
-| Nền tảng/database | Config, schema/migration, helper, test infrastructure |
-| Tài khoản | Đăng ký, đăng nhập/đăng xuất, password hash, session, phân quyền |
-| Công việc | CRUD, trạng thái, hạn hoàn thành, lọc theo người dùng |
-| Giao diện/QA | Template dùng chung, responsive, thông báo lỗi, kiểm thử |
+| Mảng              | Trách nhiệm                                                      |
+| ----------------- | ---------------------------------------------------------------- |
+| Nền tảng/database | Config, schema/migration, helper, test infrastructure            |
+| Tài khoản         | Đăng ký, đăng nhập/đăng xuất, password hash, session, phân quyền |
+| Công việc         | CRUD, trạng thái, hạn hoàn thành, lọc theo người dùng            |
+| Giao diện/QA      | Template dùng chung, responsive, thông báo lỗi, kiểm thử         |
 
 Thống nhất schema, endpoint và dữ liệu đầu vào/đầu ra trước khi phát triển song song. Hoàn thiện đăng nhập, quyền sở hữu và CSRF trước khi công khai chức năng thay đổi dữ liệu.

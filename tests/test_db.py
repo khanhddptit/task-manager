@@ -49,6 +49,24 @@ def test_schema_tables(app):
         }
 
 
+def test_init_db_creates_indexes_after_migrations(app):
+    with app.app_context():
+        indexes = {
+            row["name"] for row in get_db().execute(
+                "SELECT name FROM sqlite_master WHERE type = 'index'"
+            )
+        }
+
+    assert {
+        "idx_workspace_creator",
+        "idx_workspace_updater",
+        "idx_project_creator",
+        "idx_project_updater",
+        "idx_task_updater",
+        "idx_comment_updater",
+    } <= indexes
+
+
 def test_init_db_preserves_data(seeded_app):
     result = seeded_app.test_cli_runner().invoke(args=["init-db"])
     assert result.exit_code == 0

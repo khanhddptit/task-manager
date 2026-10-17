@@ -28,10 +28,15 @@ def _add_workspace_project_creators(connection):
 
 
 def _add_audit_columns(connection):
+    # Thêm cột updated_at cho user (nếu chưa có)
     _add_column(connection, "user", "updated_at", "TEXT")
+
+    # Điền giá trị mặc định cho các bản ghi cũ còn NULL
     connection.execute(
         "UPDATE user SET updated_at = CURRENT_TIMESTAMP WHERE updated_at IS NULL"
     )
+
+    # Trigger tự động set updated_at khi INSERT (IF NOT EXISTS để an toàn khi chạy lại)
     connection.execute("""
         CREATE TRIGGER IF NOT EXISTS set_user_updated_at_after_insert
         AFTER INSERT ON user
@@ -40,30 +45,15 @@ def _add_audit_columns(connection):
             UPDATE user SET updated_at = CURRENT_TIMESTAMP WHERE id = NEW.id;
         END
     """)
-    _add_column(
-        connection,
-        "workspace",
-        "updated_by",
-        "INTEGER REFERENCES user (id) ON DELETE SET NULL",
-    )
-    _add_column(
-        connection,
-        "project",
-        "updated_by",
-        "INTEGER REFERENCES user (id) ON DELETE SET NULL",
-    )
-    _add_column(
-        connection,
-        "task",
-        "updated_by",
-        "INTEGER REFERENCES user (id) ON DELETE SET NULL",
-    )
-    _add_column(
-        connection,
-        "comment",
-        "updated_by",
-        "INTEGER REFERENCES user (id) ON DELETE SET NULL",
-    )
+
+    # Thêm cột updated_by cho các bảng audit
+    for table in ("workspace", "project", "task", "comment"):
+        _add_column(
+            connection,
+            table,
+            "updated_by",
+            "INTEGER REFERENCES user (id) ON DELETE SET NULL",
+        )
 
 
 MIGRATIONS = {

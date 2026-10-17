@@ -20,19 +20,25 @@ def close_db(error=None):
 
 
 def init_db():
-    with current_app.open_resource("schema.sql") as schema:
-        get_db().executescript(schema.read().decode("utf-8"))
-    from app.migrations import apply_migrations
+    db = get_db()
 
-    apply_migrations(get_db())
+    # 1. Tạo bảng còn thiếu (CREATE TABLE IF NOT EXISTS)
+    with current_app.open_resource("schema.sql") as schema:
+        db.executescript(schema.read().decode("utf-8"))
+
+    # 2. Thêm cột audit còn thiếu trên DB cũ
+    from app.migrations import apply_migrations
+    apply_migrations(db)
+
+    # 3. Tạo index còn thiếu (CREATE INDEX IF NOT EXISTS)
     with current_app.open_resource("indexes.sql") as indexes:
-        get_db().executescript(indexes.read().decode("utf-8"))
+        db.executescript(indexes.read().decode("utf-8"))
 
 
 @click.command("init-db")
 @with_appcontext
 def init_db_command():
-    """Create missing tables and apply migrations without deleting existing data."""
+    """Create missing tables, apply migrations, and create indexes without deleting existing data."""
     init_db()
     click.echo("Database initialized (existing data preserved).")
 
