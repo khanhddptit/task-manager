@@ -150,6 +150,11 @@ def test_legacy_migration_preserves_data_and_can_run_repeatedly(app, tmp_path):
             }
             for table in ("user", "workspace", "project", "task", "comment")
         }
+        indexes = {
+            row["name"] for row in db.execute(
+                "SELECT name FROM sqlite_master WHERE type = 'index'"
+            )
+        }
 
     assert dict(workspace) == {
         "id": 20,
@@ -165,6 +170,7 @@ def test_legacy_migration_preserves_data_and_can_run_repeatedly(app, tmp_path):
     assert UTC_TIMESTAMP_FORMAT.fullmatch(new_user_updated_at)
     assert "updated_at" in columns["user"]
     assert all("updated_by" in columns[table] for table in columns if table != "user")
+    assert {"idx_workspace_creator", "idx_project_creator"} <= indexes
 import sqlite3
 from datetime import datetime
 

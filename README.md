@@ -7,7 +7,7 @@ Bộ khung dùng chung cho team phát triển ứng dụng quản lý công vi�
 - Application factory `create_app()` và Blueprint riêng cho từng module.
 - Trang chủ, trang công việc mẫu, layout Bootstrap/Jinja2 dùng chung, trang lỗi 404/500.
 - Kết nối SQLite theo application context, tự đóng kết nối và bật khóa ngoại.
-- Schema 7 bảng: `user`, `workspace`, `workspace_member`, `project`, `project_member`, `task`, `comment`; lệnh `init-db` không xóa dữ liệu hiện có.
+- Schema gồm 7 bảng nghiệp vụ (`user`, `workspace`, `workspace_member`, `project`, `project_member`, `task`, `comment`) và bảng `schema_migration` theo dõi migration; lệnh `init-db` áp dụng migration và tạo index, không xóa dữ liệu hiện có.
 - Cấu hình Session, biến môi trường và bộ kiểm thử pytest.
 
 **Chưa triển khai:** đăng ký/đăng nhập, phân quyền, CRUD, tìm kiếm/lọc công việc. Trang công việc chỉ là placeholder, không đọc dữ liệu thật. Các package `models` và `services` là vị trí để team bổ sung code, chưa có nghiệp vụ.
@@ -35,7 +35,9 @@ task-manager/
 │   ├── __init__.py          # Application factory, đăng ký Blueprint và trang lỗi
 │   ├── config.py            # Cấu hình chung và đọc biến môi trường
 │   ├── db.py                # Kết nối SQLite, teardown, lệnh init-db
-│   ├── schema.sql           # Bảng và index ban đầu
+│   ├── schema.sql           # Định nghĩa bảng
+│   ├── migrations.py        # Migration schema có version
+│   ├── indexes.sql          # Index tạo sau khi áp dụng migration
 │   ├── main/
 │   │   ├── __init__.py
 │   │   └── routes.py        # Trang chủ
@@ -150,7 +152,7 @@ erDiagram
 - Quy ước `due_date` là `YYYY-MM-DD`; schema chưa kiểm tra định dạng nên service phải validate. Timestamp mặc định dùng UTC; khi sửa task, code cập nhật phải gán `updated_at = CURRENT_TIMESTAMP`.
 - Dùng `get_db()` trong application/request context. Câu lệnh ghi phải `commit()`; khi lỗi cần `rollback()` hoặc dùng transaction context của connection.
 - Luôn dùng SQL parameter `?`, không nối chuỗi/f-string với dữ liệu người dùng.
-- `init-db` chỉ tạo bảng/index còn thiếu, **không phải migration**. Schema mới thay thế mô hình `users/tasks`; không chạy chồng lên database cũ vì sẽ để lại bảng cũ và không chuyển dữ liệu. Với database phát triển cũ, dừng server, sao lưu rồi chuyển file cũ ra khỏi đường dẫn `instance/task_manager.sqlite3` trước khi chạy `init-db` để tạo database rỗng. Nếu cần giữ dữ liệu trong mô hình mới, phải viết migration riêng. Không thêm lệnh xóa dữ liệu vào quá trình khởi động.
+- `init-db` tạo bảng còn thiếu, áp dụng các migration chưa chạy trong `schema_migration`, rồi tạo index. Thứ tự này cho phép migration bổ sung cột cần thiết trước khi các index tương ứng được tạo. Migration hiện có bổ sung audit columns cho database cũ, giữ nguyên bản ghi và backfill `user.updated_at`; `created_by` của dữ liệu cũ để `NULL`. `init-db` không xóa dữ liệu. Sao lưu database trước khi thay đổi schema; thay đổi dữ liệu/mô hình ngoài các migration đã định nghĩa cần có migration riêng.
 
 ### Session
 
