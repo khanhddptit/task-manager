@@ -221,3 +221,25 @@ def test_delete_user_sets_audit_to_null(audit_app):
 
         # Không có vi phạm foreign key
         assert db.execute("PRAGMA foreign_key_check").fetchall() == []
+
+
+def test_audit_foreign_key_indexes(audit_app):
+    app, _, _ = audit_app
+    with app.app_context():
+        db = get_db()
+        indexes = {
+            row[0]
+            for row in db.execute(
+                "SELECT name FROM sqlite_master WHERE type = 'index'"
+            ).fetchall()
+        }
+        # Kiểm tra đầy đủ các index cho cả created_by và updated_by
+        assert "idx_workspace_creator" in indexes
+        assert "idx_workspace_updater" in indexes
+        assert "idx_project_creator" in indexes
+        assert "idx_project_updater" in indexes
+        assert "idx_task_creator" in indexes
+        assert "idx_task_updater" in indexes
+        assert "idx_comment_author" in indexes
+        assert "idx_comment_updater" in indexes
+
