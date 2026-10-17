@@ -20,30 +20,25 @@ def close_db(error=None):
 
 
 def init_db():
-    with current_app.open_resource("schema.sql") as schema:
-        connection = get_db()
-        statement = ""
-        indexes = []
-        for line in schema.read().decode("utf-8").splitlines(keepends=True):
-            statement += line
-            if sqlite3.complete_statement(statement):
-                if statement.lstrip().upper().startswith("CREATE INDEX"):
-                    indexes.append(statement)
-                else:
-                    connection.execute(statement)
-                statement = ""
-    from app.migrations import apply_migrations
+    db = get_db()
 
-    apply_migrations(connection)
-    for index in indexes:
-        connection.execute(index)
-    connection.commit()
+    # 1. Tạo bảng còn thiếu (CREATE TABLE IF NOT EXISTS)
+    with current_app.open_resource("schema.sql") as schema:
+        db.executescript(schema.read().decode("utf-8"))
+
+    # 2. Thêm cột audit còn thiếu trên DB cũ
+    from app.migrations import apply_migrations
+    apply_migrations(db)
+
+    # 3. Tạo index còn thiếu (CREATE INDEX IF NOT EXISTS)
+    with current_app.open_resource("indexes.sql") as indexes:
+        db.executescript(indexes.read().decode("utf-8"))
 
 
 @click.command("init-db")
 @with_appcontext
 def init_db_command():
-    """Create missing tables and apply migrations without deleting existing data."""
+    """Create missing tables, apply migrations, and create indexes without deleting existing data."""
     init_db()
     click.echo("Database initialized (existing data preserved).")
 
