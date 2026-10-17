@@ -4,7 +4,7 @@ from werkzeug.exceptions import BadRequest, UnsupportedMediaType
 from app.auth.decorators import login_required
 from app.auth.responses import api_error
 from app.auth.validation import ValidationError
-from app.services.workspace_service import create_workspace
+from app.services.workspace_service import create_workspace, list_workspaces
 from app.workspaces import bp
 
 
@@ -50,3 +50,10 @@ def create():
     name, description = validate_workspace(read_json_object())
     workspace = create_workspace(name, description, g.user["id"])
     return jsonify(workspace=dict(workspace)), 201
+
+
+@bp.get("")
+@login_required
+def index():
+    workspaces = list_workspaces(g.user["id"])
+    return jsonify(workspaces=[dict(workspace) for workspace in workspaces])

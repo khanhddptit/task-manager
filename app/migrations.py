@@ -18,8 +18,33 @@ def _add_workspace_project_creators(connection):
         )
 
 
+def _add_audit_columns(connection):
+    if not _has_column(connection, "user", "updated_at"):
+        connection.execute("ALTER TABLE user ADD COLUMN updated_at TEXT")
+        connection.execute(
+            "UPDATE user SET updated_at = CURRENT_TIMESTAMP WHERE updated_at IS NULL"
+        )
+        connection.execute("""
+            CREATE TRIGGER user_updated_at_default
+            AFTER INSERT ON user
+            FOR EACH ROW WHEN NEW.updated_at IS NULL
+            BEGIN
+                UPDATE user SET updated_at = CURRENT_TIMESTAMP WHERE id = NEW.id;
+            END
+        """)
+
+    for table in ("workspace", "project", "task", "comment"):
+        column = "updated_by"
+        if not _has_column(connection, table, column):
+            connection.execute(
+                f"ALTER TABLE {table} ADD COLUMN {column} "
+                "INTEGER REFERENCES user (id) ON DELETE SET NULL"
+            )
+
+
 MIGRATIONS = {
     1: _add_workspace_project_creators,
+    2: _add_audit_columns,
 }
 
 

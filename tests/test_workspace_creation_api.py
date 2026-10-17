@@ -55,8 +55,57 @@ def test_create_workspace_requires_authentication(client):
     assert response.json["error"]["code"] == "authentication_required"
 
 
-def test_workspace_endpoint_errors_are_json_and_non_cacheable(client):
+def test_list_workspaces_returns_only_memberships_newest_first(app, client, user_id):
+    csrf_token = login(client)
+    with app.app_context():
+        db = get_db()
+        db.execute(
+            "INSERT INTO workspace (name, created_by) VALUES (?, ?)",
+            ("Older workspace", user_id),
+        )
+        older_id = db.execute(
+            "SELECT id FROM workspace WHERE name = ?", ("Older workspace",)
+        ).fetchone()["id"]
+        db.execute(
+            """INSERT INTO workspace_member (workspace_id, user_id, role)
+               VALUES (?, ?, ?)""",
+            (older_id, user_id, "admin"),
+        )
+        db.execute(
+            "INSERT INTO workspace (name, created_by) VALUES (?, ?)",
+            ("Private workspace", user_id),
+        )
+        db.commit()
+
+    create_response = client.post(
+        "/workspaces",
+        json={"name": "Newest workspace"},
+        headers={"X-CSRFToken": csrf_token},
+    )
+    assert create_response.status_code == 201
+
     response = client.get("/workspaces")
+
+    assert response.status_code == 200
+    assert response.headers["Cache-Control"] == "no-store"
+    workspaces = response.json["workspaces"]
+    assert [workspace["name"] for workspace in workspaces] == [
+        "Newest workspace",
+        "Older workspace",
+    ]
+    assert [workspace["role"] for workspace in workspaces] == ["owner", "admin"]
+
+
+def test_list_workspaces_requires_authentication(client):
+    response = client.get("/workspaces")
+
+    assert response.status_code == 401
+    assert response.headers["Cache-Control"] == "no-store"
+    assert response.json["error"]["code"] == "authentication_required"
+
+
+def test_workspace_endpoint_errors_are_json_and_non_cacheable(client):
+    response = client.patch("/workspaces")
 
     assert response.status_code == 405
     assert response.is_json

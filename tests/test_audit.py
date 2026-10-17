@@ -128,6 +128,10 @@ def test_legacy_migration_preserves_data_and_can_run_repeatedly(app, tmp_path):
         init_db()
         init_db()
         db = get_db()
+        db.execute(
+            "INSERT INTO user (username, password_hash) VALUES (?, ?)",
+            ("new-user", "placeholder"),
+        )
         workspace = db.execute(
             "SELECT id, name, created_by FROM workspace WHERE id = 20"
         ).fetchone()
@@ -135,8 +139,17 @@ def test_legacy_migration_preserves_data_and_can_run_repeatedly(app, tmp_path):
             "SELECT id, name, created_by FROM project WHERE id = 30"
         ).fetchone()
         migration = db.execute(
-            "SELECT version FROM schema_migration WHERE version = 1"
+            "SELECT MAX(version) FROM schema_migration"
         ).fetchone()
+        new_user_updated_at = db.execute(
+            "SELECT updated_at FROM user WHERE username = 'new-user'"
+        ).fetchone()["updated_at"]
+        columns = {
+            table: {
+                row["name"] for row in db.execute(f"PRAGMA table_info({table})")
+            }
+            for table in ("user", "workspace", "project", "task", "comment")
+        }
 
     assert dict(workspace) == {
         "id": 20,
@@ -148,7 +161,10 @@ def test_legacy_migration_preserves_data_and_can_run_repeatedly(app, tmp_path):
         "name": "Legacy project",
         "created_by": None,
     }
-    assert migration["version"] == 1
+    assert migration["MAX(version)"] == 2
+    assert UTC_TIMESTAMP_FORMAT.fullmatch(new_user_updated_at)
+    assert "updated_at" in columns["user"]
+    assert all("updated_by" in columns[table] for table in columns if table != "user")
 import sqlite3
 from datetime import datetime
 
@@ -393,4 +409,3 @@ def test_audit_foreign_key_indexes(audit_app):
         assert "idx_task_updater" in indexes
         assert "idx_comment_author" in indexes
         assert "idx_comment_updater" in indexes
-
