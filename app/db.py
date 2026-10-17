@@ -30,7 +30,7 @@ def init_db():
 @click.command("init-db")
 @with_appcontext
 def init_db_command():
-    """Create missing tables without deleting existing data."""
+    """Create missing tables and apply migrations without deleting existing data."""
     init_db()
     click.echo("Database initialized (existing data preserved).")
 
