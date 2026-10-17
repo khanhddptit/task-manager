@@ -115,13 +115,13 @@ Schema nằm trong [app/schema.sql](app/schema.sql), sử dụng tên bảng **s
 
 | Bảng | Cột chính / chức năng |
 | --- | --- |
-| `user` | `id`, `username` duy nhất, `password_hash`, `created_at` |
-| `workspace` | `id`, `name`, `description`, `created_at`, `updated_at` |
+| `user` | `id`, `username` duy nhất, `password_hash`, `created_at`, `updated_at` |
+| `workspace` | `id`, `name`, `description`, `created_by`, `updated_by`, `created_at`, `updated_at` |
 | `workspace_member` | Khóa chính ghép (`workspace_id`, `user_id`), `role`, `joined_at` |
-| `project` | `id`, `workspace_id`, `name`, `description`, `created_at`, `updated_at` |
+| `project` | `id`, `workspace_id`, `name`, `description`, `created_by`, `updated_by`, `created_at`, `updated_at` |
 | `project_member` | Khóa chính ghép (`project_id`, `user_id`), `workspace_id`, `role`, `joined_at` |
-| `task` | `id`, `project_id`, `created_by`, `assignee_id`, `title`, `description`, `status`, `due_date`, `created_at`, `updated_at` |
-| `comment` | `id`, `task_id`, `author_id`, `content`, `created_at`, `updated_at` |
+| `task` | `id`, `project_id`, `created_by`, `assignee_id`, `updated_by`, `title`, `description`, `status`, `due_date`, `created_at`, `updated_at` |
+| `comment` | `id`, `task_id`, `author_id`, `updated_by`, `content`, `created_at`, `updated_at` |
 
 ```mermaid
 erDiagram
@@ -141,7 +141,7 @@ erDiagram
 - Member có role `owner`, `admin`, `member` ở từng cấp, mặc định `member`. Role workspace và project độc lập; schema chưa định nghĩa kế thừa quyền.
 - Khóa ngoại ghép bảo đảm project member phải thuộc **đúng workspace của project**, kể cả khi cập nhật; không cho phép membership trùng.
 - Task có thể chưa được giao (`assignee_id = NULL`) hoặc được giao cho đúng một project member. Chuyển project khi còn người được giao không thuộc project mới sẽ bị từ chối.
-- `created_by` và `author_id` tham chiếu user và có thể NULL để giữ lịch sử khi user bị xóa. Khi tạo mới, service phải lấy tác giả từ session và kiểm tra quyền trong project, không tin ID gửi từ client.
+- Các trường audit (`created_by`, `updated_by`, `author_id`) tham chiếu user và có thể NULL để giữ lịch sử khi user bị xóa. Khi tạo/sửa, service phải lấy người thao tác từ session và kiểm tra quyền, không tin ID gửi từ client.
 - Trạng thái công việc: `todo`, `in_progress`, `done`; tên workspace/project, username, tiêu đề và nội dung comment không được rỗng hoặc chỉ gồm dấu cách.
 - Xóa workspace → project/member → task → comment theo `ON DELETE CASCADE`; xóa project hoặc task cũng xóa dữ liệu con tương ứng.
 - Không xóa member/user đang được giao task: phải bỏ giao hoặc giao lại các task trước trong cùng transaction. Xóa membership không xóa nội dung task/comment. Sau khi bỏ giao, xóa user sẽ xóa membership, đặt `created_by`/`author_id` về NULL và giữ nội dung.
@@ -150,7 +150,7 @@ erDiagram
 - Quy ước `due_date` là `YYYY-MM-DD`; schema chưa kiểm tra định dạng nên service phải validate. Timestamp mặc định dùng UTC; khi sửa task, code cập nhật phải gán `updated_at = CURRENT_TIMESTAMP`.
 - Dùng `get_db()` trong application/request context. Câu lệnh ghi phải `commit()`; khi lỗi cần `rollback()` hoặc dùng transaction context của connection.
 - Luôn dùng SQL parameter `?`, không nối chuỗi/f-string với dữ liệu người dùng.
-- `init-db` chỉ tạo bảng/index còn thiếu, **không phải migration**. Schema mới thay thế mô hình `users/tasks`; không chạy chồng lên database cũ vì sẽ để lại bảng cũ và không chuyển dữ liệu. Với database phát triển cũ, dừng server, sao lưu rồi chuyển file cũ ra khỏi đường dẫn `instance/task_manager.sqlite3` trước khi chạy `init-db` để tạo database rỗng. Nếu cần giữ dữ liệu trong mô hình mới, phải viết migration riêng. Không thêm lệnh xóa dữ liệu vào quá trình khởi động.
+- `init-db` tạo bảng/index còn thiếu và áp dụng các migration phiên bản cho schema hiện tại (bao gồm các cột audit). Lệnh này không chuyển dữ liệu từ mô hình cũ `users/tasks`; database dạng cũ vẫn cần migration riêng để chuyển dữ liệu. Không thêm lệnh xóa dữ liệu vào quá trình khởi động.
 
 ### Session
 

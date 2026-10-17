@@ -45,6 +45,7 @@ def test_schema_tables(app):
         assert tables == {
             "user", "workspace", "project", "task",
             "workspace_member", "project_member", "comment",
+            "schema_migration",
         }
 
 
@@ -57,6 +58,149 @@ def test_init_db_preserves_data(seeded_app):
         assert db.execute("SELECT username FROM user WHERE id = 1").fetchone()[0] == "demo"
         assert db.execute("SELECT COUNT(*) FROM task").fetchone()[0] == 1
         assert db.execute("SELECT COUNT(*) FROM comment").fetchone()[0] == 1
+
+
+def test_init_db_migrates_legacy_audit_columns_before_indexes(app, tmp_path):
+    database = tmp_path / "legacy.sqlite3"
+    legacy_db = sqlite3.connect(database)
+    legacy_db.executescript("""
+        CREATE TABLE user (
+            id INTEGER PRIMARY KEY,
+            username TEXT NOT NULL UNIQUE,
+            password_hash TEXT NOT NULL,
+            created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+        );
+        CREATE TABLE workspace (
+            id INTEGER PRIMARY KEY,
+            name TEXT NOT NULL,
+            description TEXT NOT NULL DEFAULT '',
+            created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+        );
+        CREATE TABLE workspace_member (
+            workspace_id INTEGER NOT NULL,
+            user_id INTEGER NOT NULL,
+            role TEXT NOT NULL DEFAULT 'member',
+            joined_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            PRIMARY KEY (workspace_id, user_id)
+        );
+        CREATE TABLE project (
+            id INTEGER PRIMARY KEY,
+            workspace_id INTEGER NOT NULL,
+            name TEXT NOT NULL,
+            description TEXT NOT NULL DEFAULT '',
+            created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            UNIQUE (id, workspace_id)
+        );
+        CREATE TABLE project_member (
+            project_id INTEGER NOT NULL,
+            workspace_id INTEGER NOT NULL,
+            user_id INTEGER NOT NULL,
+            role TEXT NOT NULL DEFAULT 'member',
+            joined_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            PRIMARY KEY (project_id, user_id)
+        );
+        CREATE TABLE task (
+            id INTEGER PRIMARY KEY,
+            project_id INTEGER NOT NULL,
+            created_by INTEGER,
+            assignee_id INTEGER,
+            title TEXT NOT NULL,
+            description TEXT NOT NULL DEFAULT '',
+            status TEXT NOT NULL DEFAULT 'todo',
+            due_date TEXT,
+            created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+        );
+        CREATE TABLE comment (
+            id INTEGER PRIMARY KEY,
+            task_id INTEGER NOT NULL,
+            author_id INTEGER,
+            content TEXT NOT NULL,
+            created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+        );
+        INSERT INTO user (id, username, password_hash)
+            VALUES (1, 'legacy', 'placeholder');
+        INSERT INTO workspace (id, name) VALUES (10, 'Legacy workspace');
+        INSERT INTO project (id, workspace_id, name)
+            VALUES (20, 10, 'Legacy project');
+    """)
+    legacy_db.close()
+
+    app.config["DATABASE"] = str(database)
+    with app.app_context():
+        from app.db import init_db
+
+        init_db()
+        init_db()
+        db = get_db()
+        workspace = db.execute(
+            "SELECT id, name, created_by, updated_by FROM workspace WHERE id = 10"
+        ).fetchone()
+        project = db.execute(
+            "SELECT id, name, created_by, updated_by FROM project WHERE id = 20"
+        ).fetchone()
+        db.execute(
+            "UPDATE workspace SET created_by = 1, updated_by = 1 WHERE id = 10"
+        )
+        db.execute(
+            "UPDATE project SET created_by = 1, updated_by = 1 WHERE id = 20"
+        )
+        legacy_user_timestamp = db.execute(
+            "SELECT updated_at FROM user WHERE id = 1"
+        ).fetchone()["updated_at"]
+        db.execute("DELETE FROM user WHERE id = 1")
+        audit_references = db.execute("""
+            SELECT workspace.created_by, workspace.updated_by,
+                   project.created_by, project.updated_by
+            FROM workspace JOIN project ON project.workspace_id = workspace.id
+            WHERE workspace.id = 10 AND project.id = 20
+        """).fetchone()
+        foreign_key_errors = db.execute("PRAGMA foreign_key_check").fetchall()
+        applied_migrations = db.execute(
+            "SELECT version FROM schema_migration ORDER BY version"
+        ).fetchall()
+        indexes = {
+            row["name"]
+            for row in db.execute(
+                "SELECT name FROM sqlite_master WHERE type = 'index'"
+            )
+        }
+        db.execute(
+            "INSERT INTO user (id, username, password_hash) "
+            "VALUES (2, 'new-user', 'placeholder')"
+        )
+        migrated_user_timestamp = db.execute(
+            "SELECT updated_at FROM user WHERE id = 2"
+        ).fetchone()["updated_at"]
+
+    assert dict(workspace) == {
+        "id": 10,
+        "name": "Legacy workspace",
+        "created_by": None,
+        "updated_by": None,
+    }
+    assert dict(project) == {
+        "id": 20,
+        "name": "Legacy project",
+        "created_by": None,
+        "updated_by": None,
+    }
+    assert [row["version"] for row in applied_migrations] == [1, 2]
+    assert legacy_user_timestamp
+    assert tuple(audit_references) == (None, None, None, None)
+    assert migrated_user_timestamp
+    assert foreign_key_errors == []
+    assert {
+        "idx_workspace_creator",
+        "idx_workspace_updater",
+        "idx_project_creator",
+        "idx_project_updater",
+        "idx_task_updater",
+        "idx_comment_updater",
+    } <= indexes
 
 
 def test_defaults_and_unassigned_task(seeded_app):

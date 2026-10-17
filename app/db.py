@@ -22,12 +22,17 @@ def close_db(error=None):
 def init_db():
     with current_app.open_resource("schema.sql") as schema:
         get_db().executescript(schema.read().decode("utf-8"))
+    from app.migrations import apply_migrations
+
+    apply_migrations(get_db())
+    with current_app.open_resource("indexes.sql") as indexes:
+        get_db().executescript(indexes.read().decode("utf-8"))
 
 
 @click.command("init-db")
 @with_appcontext
 def init_db_command():
-    """Create missing tables without deleting existing data."""
+    """Create missing tables and apply migrations without deleting existing data."""
     init_db()
     click.echo("Database initialized (existing data preserved).")
 
