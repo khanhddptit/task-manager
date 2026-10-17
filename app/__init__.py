@@ -32,6 +32,7 @@ def create_app(test_config=None):
     from app import db
     from app.auth import bp as auth_bp
     from app.main import bp as main_bp
+    from app.projects import bp as projects_bp
     from app.tasks import bp as tasks_bp
     from app.workspaces import bp as workspaces_bp
 
@@ -41,11 +42,12 @@ def create_app(test_config=None):
     app.register_blueprint(main_bp)
     app.register_blueprint(tasks_bp)
     app.register_blueprint(workspaces_bp)
+    app.register_blueprint(projects_bp)
 
     def is_api_request():
         return any(
             request.path == prefix or request.path.startswith(f"{prefix}/")
-            for prefix in ("/auth", "/workspaces")
+            for prefix in ("/auth", "/workspaces", "/projects")
         )
 
     @app.errorhandler(CSRFError)
