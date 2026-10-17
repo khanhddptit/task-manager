@@ -22,6 +22,9 @@ def close_db(error=None):
 def init_db():
     with current_app.open_resource("schema.sql") as schema:
         get_db().executescript(schema.read().decode("utf-8"))
+    from app.migrations import apply_migrations
+
+    apply_migrations(get_db())
 
 
 @click.command("init-db")

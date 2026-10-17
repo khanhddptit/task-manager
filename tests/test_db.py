@@ -44,7 +44,7 @@ def test_schema_tables(app):
         )}
         assert tables == {
             "user", "workspace", "project", "task",
-            "workspace_member", "project_member", "comment",
+            "workspace_member", "project_member", "comment", "schema_migration",
         }
 
 

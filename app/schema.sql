@@ -9,8 +9,10 @@ CREATE TABLE IF NOT EXISTS workspace (
     id INTEGER PRIMARY KEY,
     name TEXT NOT NULL CHECK (length(trim(name)) > 0),
     description TEXT NOT NULL DEFAULT '',
+    created_by INTEGER,
     created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+    updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (created_by) REFERENCES user (id) ON DELETE SET NULL
 );
 
 CREATE TABLE IF NOT EXISTS workspace_member (
@@ -28,10 +30,12 @@ CREATE TABLE IF NOT EXISTS project (
     workspace_id INTEGER NOT NULL,
     name TEXT NOT NULL CHECK (length(trim(name)) > 0),
     description TEXT NOT NULL DEFAULT '',
+    created_by INTEGER,
     created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
     UNIQUE (id, workspace_id),
-    FOREIGN KEY (workspace_id) REFERENCES workspace (id) ON DELETE CASCADE
+    FOREIGN KEY (workspace_id) REFERENCES workspace (id) ON DELETE CASCADE,
+    FOREIGN KEY (created_by) REFERENCES user (id) ON DELETE SET NULL
 );
 
 CREATE TABLE IF NOT EXISTS project_member (
