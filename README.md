@@ -14,16 +14,16 @@ Bộ khung dùng chung cho team phát triển ứng dụng quản lý công vi�
 
 ## 2. Tech stack
 
-| Thành phần | Công nghệ | Vai trò |
-| --- | --- | --- |
-| Ngôn ngữ | Python 3.11+ | Xử lý nghiệp vụ; môi trường khởi tạo dùng Python 3.11 |
-| Web framework | Flask 3.1 | Routing, request/response, Blueprint, Session |
-| Giao diện | HTML5, Bootstrap 5.3.3 | Layout responsive; Bootstrap CSS qua CDN có SRI |
-| Template | Jinja2 | Kế thừa layout, render dữ liệu; đi kèm Flask |
-| Cơ sở dữ liệu | SQLite, module `sqlite3` | Lưu dữ liệu cục bộ; có sẵn trong Python |
-| Session | Flask signed-cookie session | Lưu trạng thái nhỏ trong cookie có chữ ký |
-| Cấu hình | python-dotenv | Nạp cấu hình từ `.env` |`
-| Kiểm thử | pytest | Kiểm tra route, database, session và cấu hình |
+| Thành phần    | Công nghệ                   | Vai trò                                               |
+| ------------- | --------------------------- | ----------------------------------------------------- | --- |
+| Ngôn ngữ      | Python 3.11+                | Xử lý nghiệp vụ; môi trường khởi tạo dùng Python 3.11 |
+| Web framework | Flask 3.1                   | Routing, request/response, Blueprint, Session         |
+| Giao diện     | HTML5, Bootstrap 5.3.3      | Layout responsive; Bootstrap CSS qua CDN có SRI       |
+| Template      | Jinja2                      | Kế thừa layout, render dữ liệu; đi kèm Flask          |
+| Cơ sở dữ liệu | SQLite, module `sqlite3`    | Lưu dữ liệu cục bộ; có sẵn trong Python               |
+| Session       | Flask signed-cookie session | Lưu trạng thái nhỏ trong cookie có chữ ký             |
+| Cấu hình      | python-dotenv               | Nạp cấu hình từ `.env`                                | `   |
+| Kiểm thử      | pytest                      | Kiểm tra route, database, session và cấu hình         |
 
 Không cần cài SQLite server, SQLAlchemy, Flask-Session hay Node.js. Flask tự cài các dependency như Jinja2, Werkzeug và Click. Trang vẫn trả HTML khi mất mạng, nhưng cần Internet để tải Bootstrap từ CDN. Chưa dùng các component cần Bootstrap JavaScript.
 
@@ -100,10 +100,10 @@ Các lệnh dùng trực tiếp Python trong `.venv`, không cần activate hay 
 
 ### Cấu hình môi trường
 
-| Biến | Mặc định | Ý nghĩa |
-| --- | --- | --- |
-| `SECRET_KEY` | Không có, bắt buộc | Ký session cookie; giữ ổn định giữa các lần chạy/worker |
-| `SESSION_COOKIE_SECURE` | `false` | Đặt `true` khi chạy HTTPS; local HTTP để `false` |
+| Biến                    | Mặc định           | Ý nghĩa                                                 |
+| ----------------------- | ------------------ | ------------------------------------------------------- |
+| `SECRET_KEY`            | Không có, bắt buộc | Ký session cookie; giữ ổn định giữa các lần chạy/worker |
+| `SESSION_COOKIE_SECURE` | `false`            | Đặt `true` khi chạy HTTPS; local HTTP để `false`        |
 
 Biến môi trường hệ thống được ưu tiên hơn `.env`. Database mặc định nằm tại `instance/task_manager.sqlite3`; test ghi đè khóa cấu hình `DATABASE` để dùng file tạm. Không commit `.env`, `.venv`, database hoặc dữ liệu người dùng.
 
@@ -115,15 +115,15 @@ Biến môi trường hệ thống được ưu tiên hơn `.env`. Database mặ
 
 Schema nằm trong [app/schema.sql](app/schema.sql), sử dụng tên bảng **số ít**.
 
-| Bảng | Cột chính / chức năng |
-| --- | --- |
-| `user` | `id`, `username` duy nhất, `password_hash`, `created_at` |
-| `workspace` | `id`, `name`, `description`, `created_at`, `updated_at` |
-| `workspace_member` | Khóa chính ghép (`workspace_id`, `user_id`), `role`, `joined_at` |
-| `project` | `id`, `workspace_id`, `name`, `description`, `created_at`, `updated_at` |
-| `project_member` | Khóa chính ghép (`project_id`, `user_id`), `workspace_id`, `role`, `joined_at` |
-| `task` | `id`, `project_id`, `created_by`, `assignee_id`, `title`, `description`, `status`, `due_date`, `created_at`, `updated_at` |
-| `comment` | `id`, `task_id`, `author_id`, `content`, `created_at`, `updated_at` |
+| Bảng               | Cột chính / chức năng                                                                                                                   |
+| ------------------ | --------------------------------------------------------------------------------------------------------------------------------------- |
+| `user`             | `id`, `username` duy nhất, `password_hash`, `created_at`, `updated_at`                                                                  |
+| `workspace`        | `id`, `name`, `description`, `created_by`, `updated_by`, `created_at`, `updated_at`                                                     |
+| `workspace_member` | Khóa chính ghép (`workspace_id`, `user_id`), `role`, `joined_at`                                                                        |
+| `project`          | `id`, `workspace_id`, `name`, `description`, `created_by`, `updated_by`, `created_at`, `updated_at`                                     |
+| `project_member`   | Khóa chính ghép (`project_id`, `user_id`), `workspace_id`, `role`, `joined_at`                                                          |
+| `task`             | `id`, `project_id`, `created_by`, `assignee_id`, `updated_by`, `title`, `description`, `status`, `due_date`, `created_at`, `updated_at` |
+| `comment`          | `id`, `task_id`, `author_id`, `updated_by`, `content`, `created_at`, `updated_at`                                                       |
 
 ```mermaid
 erDiagram
@@ -143,7 +143,7 @@ erDiagram
 - Member có role `owner`, `admin`, `member` ở từng cấp, mặc định `member`. Role workspace và project độc lập; schema chưa định nghĩa kế thừa quyền.
 - Khóa ngoại ghép bảo đảm project member phải thuộc **đúng workspace của project**, kể cả khi cập nhật; không cho phép membership trùng.
 - Task có thể chưa được giao (`assignee_id = NULL`) hoặc được giao cho đúng một project member. Chuyển project khi còn người được giao không thuộc project mới sẽ bị từ chối.
-- `created_by` và `author_id` tham chiếu user và có thể NULL để giữ lịch sử khi user bị xóa. Khi tạo mới, service phải lấy tác giả từ session và kiểm tra quyền trong project, không tin ID gửi từ client.
+- Các trường audit (`created_by`, `updated_by`, `author_id`) tham chiếu user và có thể NULL để giữ lịch sử khi user bị xóa. Khi tạo/sửa, service phải lấy người thao tác từ session và kiểm tra quyền, không tin ID gửi từ client.
 - Trạng thái công việc: `todo`, `in_progress`, `done`; tên workspace/project, username, tiêu đề và nội dung comment không được rỗng hoặc chỉ gồm dấu cách.
 - Xóa workspace → project/member → task → comment theo `ON DELETE CASCADE`; xóa project hoặc task cũng xóa dữ liệu con tương ứng.
 - Không xóa member/user đang được giao task: phải bỏ giao hoặc giao lại các task trước trong cùng transaction. Xóa membership không xóa nội dung task/comment. Sau khi bỏ giao, xóa user sẽ xóa membership, đặt `created_by`/`author_id` về NULL và giữ nội dung.
@@ -152,7 +152,7 @@ erDiagram
 - Quy ước `due_date` là `YYYY-MM-DD`; schema chưa kiểm tra định dạng nên service phải validate. Timestamp mặc định dùng UTC; khi sửa task, code cập nhật phải gán `updated_at = CURRENT_TIMESTAMP`.
 - Dùng `get_db()` trong application/request context. Câu lệnh ghi phải `commit()`; khi lỗi cần `rollback()` hoặc dùng transaction context của connection.
 - Luôn dùng SQL parameter `?`, không nối chuỗi/f-string với dữ liệu người dùng.
-- `init-db` tạo bảng còn thiếu, áp dụng các migration chưa chạy trong `schema_migration`, rồi tạo index. Thứ tự này cho phép migration bổ sung cột cần thiết trước khi các index tương ứng được tạo. Migration hiện có bổ sung audit columns cho database cũ, giữ nguyên bản ghi và backfill `user.updated_at`; `created_by` của dữ liệu cũ để `NULL`. `init-db` không xóa dữ liệu. Sao lưu database trước khi thay đổi schema; thay đổi dữ liệu/mô hình ngoài các migration đã định nghĩa cần có migration riêng.
+- `init-db` tạo bảng/index còn thiếu và áp dụng các migration phiên bản cho schema hiện tại (bao gồm các cột audit). Lệnh này không chuyển dữ liệu từ mô hình cũ `users/tasks`; database dạng cũ vẫn cần migration riêng để chuyển dữ liệu. Không thêm lệnh xóa dữ liệu vào quá trình khởi động.
 
 ### Session
 
@@ -208,11 +208,11 @@ Test dùng database trong thư mục tạm, không tác động database local. 
 
 ## 8. Gợi ý phân công tiếp theo
 
-| Mảng | Trách nhiệm |
-| --- | --- |
-| Nền tảng/database | Config, schema/migration, helper, test infrastructure |
-| Tài khoản | Đăng ký, đăng nhập/đăng xuất, password hash, session, phân quyền |
-| Công việc | CRUD, trạng thái, hạn hoàn thành, lọc theo người dùng |
-| Giao diện/QA | Template dùng chung, responsive, thông báo lỗi, kiểm thử |
+| Mảng              | Trách nhiệm                                                      |
+| ----------------- | ---------------------------------------------------------------- |
+| Nền tảng/database | Config, schema/migration, helper, test infrastructure            |
+| Tài khoản         | Đăng ký, đăng nhập/đăng xuất, password hash, session, phân quyền |
+| Công việc         | CRUD, trạng thái, hạn hoàn thành, lọc theo người dùng            |
+| Giao diện/QA      | Template dùng chung, responsive, thông báo lỗi, kiểm thử         |
 
 Thống nhất schema, endpoint và dữ liệu đầu vào/đầu ra trước khi phát triển song song. Hoàn thiện đăng nhập, quyền sở hữu và CSRF trước khi công khai chức năng thay đổi dữ liệu.

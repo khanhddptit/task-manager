@@ -5,41 +5,55 @@ def _has_column(connection, table, column):
     )
 
 
+def _add_column(connection, table, column, definition):
+    if not _has_column(connection, table, column):
+        connection.execute(
+            f"ALTER TABLE {table} ADD COLUMN {column} {definition}"
+        )
+
+
 def _add_workspace_project_creators(connection):
-    if not _has_column(connection, "workspace", "created_by"):
-        connection.execute(
-            """ALTER TABLE workspace ADD COLUMN created_by INTEGER
-               REFERENCES user (id) ON DELETE SET NULL"""
-        )
-    if not _has_column(connection, "project", "created_by"):
-        connection.execute(
-            """ALTER TABLE project ADD COLUMN created_by INTEGER
-               REFERENCES user (id) ON DELETE SET NULL"""
-        )
+    _add_column(
+        connection,
+        "workspace",
+        "created_by",
+        "INTEGER REFERENCES user (id) ON DELETE SET NULL",
+    )
+    _add_column(
+        connection,
+        "project",
+        "created_by",
+        "INTEGER REFERENCES user (id) ON DELETE SET NULL",
+    )
 
 
 def _add_audit_columns(connection):
-    if not _has_column(connection, "user", "updated_at"):
-        connection.execute("ALTER TABLE user ADD COLUMN updated_at TEXT")
-        connection.execute(
-            "UPDATE user SET updated_at = CURRENT_TIMESTAMP WHERE updated_at IS NULL"
-        )
-        connection.execute("""
-            CREATE TRIGGER user_updated_at_default
-            AFTER INSERT ON user
-            FOR EACH ROW WHEN NEW.updated_at IS NULL
-            BEGIN
-                UPDATE user SET updated_at = CURRENT_TIMESTAMP WHERE id = NEW.id;
-            END
-        """)
+    # Thêm cột updated_at cho user (nếu chưa có)
+    _add_column(connection, "user", "updated_at", "TEXT")
 
+    # Điền giá trị mặc định cho các bản ghi cũ còn NULL
+    connection.execute(
+        "UPDATE user SET updated_at = CURRENT_TIMESTAMP WHERE updated_at IS NULL"
+    )
+
+    # Trigger tự động set updated_at khi INSERT (IF NOT EXISTS để an toàn khi chạy lại)
+    connection.execute("""
+        CREATE TRIGGER IF NOT EXISTS set_user_updated_at_after_insert
+        AFTER INSERT ON user
+        WHEN NEW.updated_at IS NULL
+        BEGIN
+            UPDATE user SET updated_at = CURRENT_TIMESTAMP WHERE id = NEW.id;
+        END
+    """)
+
+    # Thêm cột updated_by cho các bảng audit
     for table in ("workspace", "project", "task", "comment"):
-        column = "updated_by"
-        if not _has_column(connection, table, column):
-            connection.execute(
-                f"ALTER TABLE {table} ADD COLUMN {column} "
-                "INTEGER REFERENCES user (id) ON DELETE SET NULL"
-            )
+        _add_column(
+            connection,
+            table,
+            "updated_by",
+            "INTEGER REFERENCES user (id) ON DELETE SET NULL",
+        )
 
 
 MIGRATIONS = {
