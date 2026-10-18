@@ -47,3 +47,12 @@ def update_project_member_role(project_id, user_id, role):
            WHERE project_id = ? AND user_id = ?""",
         (role, project_id, user_id),
     )
+
+
+def insert_project_member(project_id, workspace_id, user_id, role):
+    get_db().execute(
+        """INSERT INTO project_member
+               (project_id, workspace_id, user_id, role)
+           VALUES (?, ?, ?, ?)""",
+        (project_id, workspace_id, user_id, role),
+    )

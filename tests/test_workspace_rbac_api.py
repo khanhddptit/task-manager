@@ -135,12 +135,12 @@ def test_project_admin_can_change_role_only_in_their_project(
     csrf_token = login_as(client, "admin")
 
     response = client.patch(
-        f"/projects/1/members/{rbac_world['member']}",
+        f"/workspaces/1/projects/1/members/{rbac_world['member']}",
         json={"role": "admin"},
         headers={"X-CSRFToken": csrf_token},
     )
     other_project_response = client.patch(
-        f"/projects/2/members/{rbac_world['member']}",
+        f"/workspaces/1/projects/2/members/{rbac_world['member']}",
         json={"role": "admin"},
         headers={"X-CSRFToken": csrf_token},
     )
@@ -183,7 +183,7 @@ def test_workspace_admin_without_project_membership_cannot_manage_project(
     csrf_token = login_as(client, "second_admin")
 
     response = client.patch(
-        f"/projects/1/members/{rbac_world['member']}",
+        f"/workspaces/1/projects/1/members/{rbac_world['member']}",
         json={"role": "admin"},
         headers={"X-CSRFToken": csrf_token},
     )
@@ -213,13 +213,93 @@ def test_workspace_owner_has_implicit_project_admin_access(
 
     csrf_token = login_as(client, "owner")
     response = client.patch(
-        f"/projects/2/members/{rbac_world['member']}",
+        f"/workspaces/1/projects/2/members/{rbac_world['member']}",
         json={"role": "admin"},
         headers={"X-CSRFToken": csrf_token},
     )
 
     assert response.status_code == 200
     assert response.json["member"]["role"] == "admin"
+
+
+def test_project_admin_can_add_workspace_member_to_own_project(
+    app, client, rbac_world
+):
+    with app.app_context():
+        db = get_db()
+        db.execute(
+            "INSERT INTO workspace_member (workspace_id, user_id, role) "
+            "VALUES (1, ?, 'member')",
+            (rbac_world["outsider"],),
+        )
+        db.commit()
+    csrf_token = login_as(client, "admin")
+
+    response = client.post(
+        "/workspaces/1/projects/1/members",
+        json={"user_id": rbac_world["outsider"], "role": "member"},
+        headers={"X-CSRFToken": csrf_token},
+    )
+
+    assert response.status_code == 201
+    assert response.json["member"]["role"] == "member"
+    with app.app_context():
+        membership = get_db().execute(
+            "SELECT role FROM project_member "
+            "WHERE project_id = 1 AND user_id = ?",
+            (rbac_world["outsider"],),
+        ).fetchone()
+    assert membership["role"] == "member"
+
+
+def test_workspace_owner_can_add_project_admin_for_existing_workspace_member(
+    app, client, rbac_world
+):
+    with app.app_context():
+        db = get_db()
+        db.execute(
+            "INSERT INTO workspace_member (workspace_id, user_id, role) "
+            "VALUES (1, ?, 'member')",
+            (rbac_world["outsider"],),
+        )
+        db.commit()
+    csrf_token = login_as(client, "owner")
+
+    response = client.post(
+        "/workspaces/1/projects/2/members",
+        json={"user_id": rbac_world["outsider"], "role": "admin"},
+        headers={"X-CSRFToken": csrf_token},
+    )
+
+    assert response.status_code == 201
+    assert response.json["member"]["role"] == "admin"
+
+
+def test_project_member_add_rejects_user_outside_workspace(client, rbac_world):
+    csrf_token = login_as(client, "owner")
+
+    response = client.post(
+        "/workspaces/1/projects/1/members",
+        json={"user_id": rbac_world["outsider"], "role": "member"},
+        headers={"X-CSRFToken": csrf_token},
+    )
+
+    assert response.status_code == 409
+    assert response.json["error"]["code"] == "target_not_workspace_member"
+
+
+def test_project_route_rejects_project_outside_workspace(client, rbac_world):
+    csrf_token = login_as(client, "owner")
+
+    response = client.patch(
+        f"/workspaces/2/projects/1/members/{rbac_world['member']}",
+        json={"role": "admin"},
+        headers={"X-CSRFToken": csrf_token},
+    )
+
+    assert response.status_code == 404
+    assert response.json["error"]["code"] == "project_not_found"
+    assert response.headers["Cache-Control"] == "no-store"
 
 
 def test_admin_can_update_workspace_but_cannot_promote_workspace_member(

@@ -7,7 +7,8 @@ from app.auth.validation import ValidationError
 from app.projects import bp
 from app.services.project_service import (
     ProjectServiceError,
-    change_project_member_role,
+    add_project_member,
+    change_member_role as change_project_member_role,
 )
 
 
@@ -32,7 +33,7 @@ def project_service_error(error):
 
 @bp.patch("/<int:project_id>/members/<int:target_user_id>")
 @login_required
-def change_member_role(project_id, target_user_id):
+def change_member_role(workspace_id, project_id, target_user_id):
     data = read_json_object()
     role = data.get("role")
     if set(data) != {"role"} or not isinstance(role, str) or role not in {
@@ -43,6 +44,33 @@ def change_member_role(project_id, target_user_id):
         })
 
     member = change_project_member_role(
-        project_id, g.user["id"], target_user_id, role
+        project_id, target_user_id, role, g.user["id"],
+        workspace_id=workspace_id,
     )
     return jsonify(member=dict(member))
+
+
+@bp.post("/<int:project_id>/members")
+@login_required
+def add_member(workspace_id, project_id):
+    data = read_json_object()
+    errors = {}
+    if set(data) - {"user_id", "role"}:
+        errors.update({
+            field: "Trường này không được hỗ trợ."
+            for field in set(data) - {"user_id", "role"}
+        })
+    user_id = data.get("user_id")
+    if type(user_id) is not int or user_id <= 0:
+        errors["user_id"] = "ID người dùng phải là số nguyên dương."
+    role = data.get("role", "member")
+    if not isinstance(role, str) or role not in {"admin", "member"}:
+        errors["role"] = "Project role phải là 'admin' hoặc 'member'."
+    if errors:
+        raise ValidationError(errors)
+
+    member = add_project_member(
+        project_id, user_id, role, g.user["id"],
+        workspace_id=workspace_id,
+    )
+    return jsonify(member=dict(member)), 201

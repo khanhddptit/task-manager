@@ -57,6 +57,8 @@ def _add_audit_columns(connection):
 
 
 def _enforce_single_workspace_owner(connection):
+    _require_workspace_owners(connection)
+
     duplicate = connection.execute("""
         SELECT workspace_id
         FROM workspace_member
@@ -75,6 +77,23 @@ def _enforce_single_workspace_owner(connection):
         ON workspace_member (workspace_id)
         WHERE role = 'owner'
     """)
+
+
+def _require_workspace_owners(connection):
+    ownerless = connection.execute("""
+        SELECT w.id AS workspace_id
+        FROM workspace AS w
+        LEFT JOIN workspace_member AS wm
+          ON wm.workspace_id = w.id AND wm.role = 'owner'
+        GROUP BY w.id
+        HAVING COUNT(wm.user_id) = 0
+        LIMIT 1
+    """).fetchone()
+    if ownerless is not None:
+        raise RuntimeError(
+            "Cannot enforce Workspace Owner: "
+            f"workspace {ownerless['workspace_id']} has no Workspace Owner."
+        )
 
 
 def _remove_project_owner_role(connection):
@@ -113,6 +132,7 @@ MIGRATIONS = {
     2: _add_audit_columns,
     3: _enforce_single_workspace_owner,
     4: _remove_project_owner_role,
+    5: _require_workspace_owners,
 }
 
 

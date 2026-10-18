@@ -47,7 +47,7 @@ def create_app(test_config=None):
     def is_api_request():
         return any(
             request.path == prefix or request.path.startswith(f"{prefix}/")
-            for prefix in ("/auth", "/projects", "/workspaces")
+            for prefix in ("/auth", "/workspaces")
         )
 
     @app.errorhandler(CSRFError)

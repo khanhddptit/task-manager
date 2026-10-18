@@ -123,6 +123,41 @@ def test_init_db_rejects_legacy_workspace_with_multiple_owners(seeded_app):
         ).fetchone() is None
 
 
+def test_init_db_rejects_legacy_workspace_without_an_owner(seeded_app):
+    with seeded_app.app_context():
+        db = get_db()
+        db.execute(
+            "INSERT INTO user (id, username, password_hash) "
+            "VALUES (3, 'third', 'placeholder')"
+        )
+        db.execute(
+            "INSERT INTO workspace (id, name) VALUES (3, 'Ownerless team')"
+        )
+        db.execute(
+            "INSERT INTO workspace_member (workspace_id, user_id, role) "
+            "VALUES (3, 3, 'owner')"
+        )
+        db.execute(
+            "DELETE FROM workspace_member "
+            "WHERE workspace_id = 3 AND role = 'owner'"
+        )
+        db.execute("DELETE FROM schema_migration WHERE version = 5")
+        db.commit()
+
+        with pytest.raises(RuntimeError, match="no Workspace Owner"):
+            from app.db import init_db
+
+            init_db()
+
+        assert db.execute(
+            "SELECT COUNT(*) FROM workspace_member "
+            "WHERE workspace_id = 3 AND role = 'owner'"
+        ).fetchone()[0] == 0
+        assert db.execute(
+            "SELECT 1 FROM schema_migration WHERE version = 5"
+        ).fetchone() is None
+
+
 def test_init_db_migrates_legacy_audit_columns_before_indexes(app, tmp_path):
     database = tmp_path / "legacy.sqlite3"
     legacy_db = sqlite3.connect(database)
@@ -187,6 +222,8 @@ def test_init_db_migrates_legacy_audit_columns_before_indexes(app, tmp_path):
         INSERT INTO user (id, username, password_hash)
             VALUES (1, 'legacy', 'placeholder');
         INSERT INTO workspace (id, name) VALUES (10, 'Legacy workspace');
+        INSERT INTO workspace_member (workspace_id, user_id, role)
+            VALUES (10, 1, 'owner');
         INSERT INTO project (id, workspace_id, name)
             VALUES (20, 10, 'Legacy project');
     """)
@@ -251,7 +288,7 @@ def test_init_db_migrates_legacy_audit_columns_before_indexes(app, tmp_path):
         "created_by": None,
         "updated_by": None,
     }
-    assert [row["version"] for row in applied_migrations] == [1, 2, 3, 4]
+    assert [row["version"] for row in applied_migrations] == [1, 2, 3, 4, 5]
     assert legacy_user_timestamp
     assert tuple(audit_references) == (None, None, None, None)
     assert migrated_user_timestamp
