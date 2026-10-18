@@ -9,6 +9,7 @@ from app.services.workspace_service import (
     add_workspace_member,
     change_workspace_member_role,
     create_workspace,
+    delete_workspace,
     get_workspace_for_user,
     leave_workspace,
     list_workspace_members,
@@ -120,6 +121,13 @@ def update(workspace_id):
     values = validate_workspace_update(read_json_object())
     workspace = update_workspace(workspace_id, g.user["id"], values)
     return jsonify(workspace=dict(workspace))
+
+
+@bp.delete("/<int:workspace_id>")
+@login_required
+def delete(workspace_id):
+    result = delete_workspace(workspace_id, g.user["id"])
+    return jsonify(**result)
 
 
 @bp.get("/<int:workspace_id>/members")

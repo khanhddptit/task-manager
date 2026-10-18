@@ -103,6 +103,108 @@ def test_member_cannot_update_workspace(client, rbac_world):
     assert response.json["error"]["code"] == "permission_denied"
 
 
+@pytest.mark.parametrize("username", ["admin", "member"])
+def test_only_workspace_owner_can_delete_workspace(client, rbac_world, username):
+    csrf_token = login_as(client, username)
+
+    response = client.delete(
+        "/workspaces/1",
+        headers={"X-CSRFToken": csrf_token},
+    )
+
+    assert response.status_code == 403
+    assert response.json["error"]["code"] == "permission_denied"
+
+
+def test_workspace_owner_can_delete_workspace_and_cascade_data(
+    app, client, rbac_world
+):
+    with app.app_context():
+        db = get_db()
+        workspace_task_ids = [
+            row["id"]
+            for row in db.execute(
+                "SELECT id FROM task WHERE project_id IN (1, 2)"
+            )
+        ]
+        task_id = workspace_task_ids[0]
+        db.execute(
+            "INSERT INTO comment (task_id, author_id, content) "
+            "VALUES (?, ?, 'Workspace deletion comment')",
+            (task_id, rbac_world["owner"]),
+        )
+        db.execute(
+            "INSERT INTO workspace (id, name, created_by) "
+            "VALUES (2, 'Other workspace', ?)",
+            (rbac_world["owner"],),
+        )
+        db.execute(
+            "INSERT INTO workspace_member (workspace_id, user_id, role) "
+            "VALUES (2, ?, 'owner')",
+            (rbac_world["owner"],),
+        )
+        db.execute(
+            "INSERT INTO project (id, workspace_id, name) "
+            "VALUES (3, 2, 'Other project')"
+        )
+        db.execute(
+            "INSERT INTO project_member "
+            "(project_id, workspace_id, user_id, role) "
+            "VALUES (3, 2, ?, 'admin')",
+            (rbac_world["owner"],),
+        )
+        other_task_id = db.execute(
+            "INSERT INTO task (project_id, title) "
+            "VALUES (3, 'Other task')"
+        ).lastrowid
+        db.execute(
+            "INSERT INTO comment (task_id, content) "
+            "VALUES (?, 'Other workspace comment')",
+            (other_task_id,),
+        )
+        db.commit()
+    csrf_token = login_as(client, "owner")
+
+    response = client.delete(
+        "/workspaces/1",
+        headers={"X-CSRFToken": csrf_token},
+    )
+
+    assert response.status_code == 200
+    with app.app_context():
+        db = get_db()
+        assert db.execute(
+            "SELECT COUNT(*) FROM workspace WHERE id = 1"
+        ).fetchone()[0] == 0
+        for table in ("workspace_member", "project", "project_member"):
+            assert db.execute(
+                f"SELECT COUNT(*) FROM {table} WHERE workspace_id = 1"
+            ).fetchone()[0] == 0
+        assert db.execute(
+            "SELECT COUNT(*) FROM task WHERE project_id IN (1, 2)"
+        ).fetchone()[0] == 0
+        placeholders = ", ".join("?" for _ in workspace_task_ids)
+        assert db.execute(
+            f"SELECT COUNT(*) FROM comment WHERE task_id IN ({placeholders})",
+            workspace_task_ids,
+        ).fetchone()[0] == 0
+        assert db.execute(
+            "SELECT COUNT(*) FROM workspace WHERE id = 2"
+        ).fetchone()[0] == 1
+        assert db.execute(
+            "SELECT COUNT(*) FROM project WHERE id = 3"
+        ).fetchone()[0] == 1
+        assert db.execute(
+            "SELECT COUNT(*) FROM task WHERE id = ?",
+            (other_task_id,),
+        ).fetchone()[0] == 1
+        assert db.execute(
+            "SELECT COUNT(*) FROM comment WHERE task_id = ?",
+            (other_task_id,),
+        ).fetchone()[0] == 1
+        assert db.execute("PRAGMA foreign_key_check").fetchall() == []
+
+
 def test_project_admin_cannot_change_workspace_role(client, rbac_world):
     with client.application.app_context():
         db = get_db()

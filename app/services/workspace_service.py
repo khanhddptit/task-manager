@@ -1,6 +1,7 @@
 from app.db import get_db, write_transaction
 from app.models.workspace import (
     count_workspace_admins,
+    delete_workspace as delete_workspace_record,
     delete_workspace_member,
     get_member_projects,
     get_member_tasks,
@@ -105,6 +106,14 @@ def update_workspace(workspace_id, actor_id, values):
         _require_role(role, {"owner", "admin"})
         update_workspace_record(workspace_id, actor_id, values)
         return get_workspace_for_member(workspace_id, actor_id)
+
+
+def delete_workspace(workspace_id, actor_id):
+    with write_transaction():
+        role = _require_workspace_role(workspace_id, actor_id)
+        _require_role(role, {"owner"})
+        delete_workspace_record(workspace_id)
+        return {"deleted_workspace_id": workspace_id}
 
 
 def add_workspace_member(workspace_id, actor_id, user_id):

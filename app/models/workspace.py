@@ -18,6 +18,13 @@ def insert_workspace_member(workspace_id, user_id, role):
     )
 
 
+def delete_workspace(workspace_id):
+    get_db().execute(
+        "DELETE FROM workspace WHERE id = ?",
+        (workspace_id,),
+    )
+
+
 def get_workspace_for_member(workspace_id, user_id):
     return get_db().execute(
         """SELECT w.id, w.name, w.description, w.created_by, w.created_at,
