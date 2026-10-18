@@ -3,6 +3,7 @@ import sqlite3
 import pytest
 
 from app.db import get_db
+from app.migrations import apply_migrations
 
 
 @pytest.fixture()
@@ -19,7 +20,7 @@ def seeded_app(app):
             INSERT INTO project (id, workspace_id, name)
                 VALUES (1, 1, 'App'), (2, 2, 'Other app'), (3, 1, 'Second app');
             INSERT INTO project_member (project_id, workspace_id, user_id, role)
-                VALUES (1, 1, 1, 'owner'), (2, 2, 2, 'owner');
+                VALUES (1, 1, 1, 'admin'), (2, 2, 2, 'admin');
             INSERT INTO task (id, project_id, created_by, assignee_id, title)
                 VALUES (1, 1, 1, 1, 'First task');
             INSERT INTO comment (task_id, author_id, content)
@@ -206,7 +207,7 @@ def test_init_db_migrates_legacy_audit_columns_before_indexes(app, tmp_path):
         "created_by": None,
         "updated_by": None,
     }
-    assert [row["version"] for row in applied_migrations] == [1, 2]
+    assert [row["version"] for row in applied_migrations] == [1, 2, 3]
     assert legacy_user_timestamp
     assert tuple(audit_references) == (None, None, None, None)
     assert migrated_user_timestamp
@@ -219,6 +220,78 @@ def test_init_db_migrates_legacy_audit_columns_before_indexes(app, tmp_path):
         "idx_task_updater",
         "idx_comment_updater",
     } <= indexes
+
+
+def test_migrate_project_owner_to_admin_preserves_task_assignment(tmp_path):
+    database = tmp_path / "legacy-project-role.sqlite3"
+    connection = sqlite3.connect(database)
+    connection.row_factory = sqlite3.Row
+    connection.execute("PRAGMA foreign_keys = ON")
+    connection.executescript("""
+        CREATE TABLE user (id INTEGER PRIMARY KEY);
+        CREATE TABLE workspace (id INTEGER PRIMARY KEY);
+        CREATE TABLE workspace_member (
+            workspace_id INTEGER NOT NULL,
+            user_id INTEGER NOT NULL,
+            role TEXT NOT NULL,
+            PRIMARY KEY (workspace_id, user_id),
+            FOREIGN KEY (workspace_id) REFERENCES workspace (id),
+            FOREIGN KEY (user_id) REFERENCES user (id)
+        );
+        CREATE TABLE project (
+            id INTEGER PRIMARY KEY,
+            workspace_id INTEGER NOT NULL,
+            UNIQUE (id, workspace_id),
+            FOREIGN KEY (workspace_id) REFERENCES workspace (id)
+        );
+        CREATE TABLE project_member (
+            project_id INTEGER NOT NULL,
+            workspace_id INTEGER NOT NULL,
+            user_id INTEGER NOT NULL,
+            role TEXT NOT NULL CHECK (role IN ('owner', 'admin', 'member')),
+            joined_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            PRIMARY KEY (project_id, user_id),
+            FOREIGN KEY (project_id, workspace_id)
+                REFERENCES project (id, workspace_id) ON DELETE CASCADE,
+            FOREIGN KEY (workspace_id, user_id)
+                REFERENCES workspace_member (workspace_id, user_id) ON DELETE CASCADE
+        );
+        CREATE TABLE task (
+            id INTEGER PRIMARY KEY,
+            project_id INTEGER NOT NULL,
+            assignee_id INTEGER,
+            FOREIGN KEY (project_id, assignee_id)
+                REFERENCES project_member (project_id, user_id) ON DELETE NO ACTION
+        );
+        CREATE TABLE schema_migration (
+            version INTEGER PRIMARY KEY,
+            applied_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+        );
+        INSERT INTO schema_migration (version) VALUES (1), (2);
+        INSERT INTO user (id) VALUES (1);
+        INSERT INTO workspace (id) VALUES (1);
+        INSERT INTO workspace_member (workspace_id, user_id, role)
+            VALUES (1, 1, 'owner');
+        INSERT INTO project (id, workspace_id) VALUES (1, 1);
+        INSERT INTO project_member (project_id, workspace_id, user_id, role)
+            VALUES (1, 1, 1, 'owner');
+        INSERT INTO task (id, project_id, assignee_id) VALUES (1, 1, 1);
+    """)
+
+    apply_migrations(connection)
+
+    member = connection.execute(
+        "SELECT role FROM project_member WHERE project_id = 1 AND user_id = 1"
+    ).fetchone()
+    task = connection.execute(
+        "SELECT assignee_id FROM task WHERE id = 1"
+    ).fetchone()
+    assert member["role"] == "admin"
+    assert task["assignee_id"] == 1
+    assert connection.execute("PRAGMA foreign_key_check").fetchall() == []
+    with pytest.raises(sqlite3.IntegrityError):
+        connection.execute("UPDATE project_member SET role = 'owner'")
+    connection.close()
 
 
 def test_defaults_and_unassigned_task(seeded_app):
@@ -253,6 +326,7 @@ def test_defaults_and_unassigned_task(seeded_app):
     "INSERT INTO workspace_member (workspace_id, user_id) VALUES (1, 1)",
     "INSERT INTO project_member (project_id, workspace_id, user_id) VALUES (1, 1, 1)",
     "INSERT INTO workspace_member (workspace_id, user_id, role) VALUES (1, 2, 'invalid')",
+    "UPDATE project_member SET role = 'owner' WHERE project_id = 1",
     "UPDATE project_member SET role = 'invalid' WHERE project_id = 1",
     "INSERT INTO project_member (project_id, workspace_id, user_id) VALUES (1, 1, 2)",
     "INSERT INTO project_member (project_id, workspace_id, user_id) VALUES (1, 2, 2)",
