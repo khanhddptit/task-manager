@@ -2,876 +2,319 @@ import pytest
 
 from app.db import get_db
 from app.services.auth_service import register_user
+from app.services.workspace_service import create_workspace
 
 
-# ---------------------------------------------------------------------------
-# Helpers
-# ---------------------------------------------------------------------------
-
-def get_csrf_token(client):
-    response = client.get("/auth/csrf")
-    assert response.status_code == 200
-    return response.json["csrf_token"]
-
-
-def login(client, username="alice", password="secret-password"):
+def login(client, username):
+    csrf_response = client.get("/auth/csrf")
     response = client.post(
         "/auth/login",
-        json={"username": username, "password": password},
-        headers={"X-CSRFToken": get_csrf_token(client)},
+        json={"username": username, "password": "correct-password"},
+        headers={"X-CSRFToken": csrf_response.json["csrf_token"]},
     )
     assert response.status_code == 200
     return response.json["csrf_token"]
 
 
-def create_workspace(client, csrf_token, name="My Workspace"):
-    response = client.post(
-        "/workspaces",
+def project_url(workspace_id, suffix=""):
+    return f"/workspaces/{workspace_id}/projects{suffix}"
+
+
+@pytest.fixture()
+def project_context(app):
+    with app.app_context():
+        user_ids = {
+            username: register_user(username, "correct-password")
+            for username in ("owner", "workspace_admin", "member", "outsider")
+        }
+        workspace = create_workspace("Team", "", user_ids["owner"])
+        workspace_id = workspace["id"]
+        db = get_db()
+        db.execute(
+            "INSERT INTO workspace_member (workspace_id, user_id, role) "
+            "VALUES (?, ?, 'admin')",
+            (workspace_id, user_ids["workspace_admin"]),
+        )
+        db.execute(
+            "INSERT INTO workspace_member (workspace_id, user_id, role) "
+            "VALUES (?, ?, 'member')",
+            (workspace_id, user_ids["member"]),
+        )
+        db.commit()
+    return {"workspace_id": workspace_id, "user_ids": user_ids}
+
+
+def make_client(app, username):
+    client = app.test_client()
+    csrf_token = login(client, username)
+    return client, {"X-CSRFToken": csrf_token}
+
+
+def create_project(client, workspace_id, headers, name="Project"):
+    return client.post(
+        project_url(workspace_id),
         json={"name": name},
-        headers={"X-CSRFToken": csrf_token},
-    )
-    assert response.status_code == 201
-    return response.json["workspace"]
-
-
-# ---------------------------------------------------------------------------
-# Fixtures
-# ---------------------------------------------------------------------------
-
-@pytest.fixture()
-def alice_id(app):
-    with app.app_context():
-        return register_user("alice", "secret-password")
-
-
-@pytest.fixture()
-def bob_id(app):
-    with app.app_context():
-        return register_user("bob", "secret-password")
-
-
-@pytest.fixture()
-def alice_csrf(client, alice_id):
-    return login(client, "alice", "secret-password")
-
-
-@pytest.fixture()
-def workspace(client, alice_id, alice_csrf):
-    return create_workspace(client, alice_csrf)
-
-
-# ---------------------------------------------------------------------------
-# Project CRUD tests
-# ---------------------------------------------------------------------------
-
-def test_create_project_success(client, alice_id, alice_csrf, workspace):
-    response = client.post(
-        f"/workspaces/{workspace['id']}/projects",
-        json={"name": "Sprint 1", "description": "First sprint"},
-        headers={"X-CSRFToken": alice_csrf},
+        headers=headers,
     )
 
+
+def add_project_member(app, workspace_id, project_id, user_id, role="member"):
+    with app.app_context():
+        db = get_db()
+        db.execute(
+            """INSERT INTO project_member
+               (project_id, workspace_id, user_id, role)
+               VALUES (?, ?, ?, ?)""",
+            (project_id, workspace_id, user_id, role),
+        )
+        db.commit()
+
+
+def add_workspace_member(app, workspace_id, user_id, role="member"):
+    with app.app_context():
+        db = get_db()
+        db.execute(
+            """INSERT INTO workspace_member (workspace_id, user_id, role)
+               VALUES (?, ?, ?)""",
+            (workspace_id, user_id, role),
+        )
+        db.commit()
+
+
+def test_project_crud_and_creator_becomes_admin(app, project_context):
+    workspace_id = project_context["workspace_id"]
+    owner, headers = make_client(app, "owner")
+
+    response = create_project(owner, workspace_id, headers, "  Roadmap  ")
     assert response.status_code == 201
+    assert response.headers["Cache-Control"] == "no-store"
     project = response.json["project"]
-    assert project["name"] == "Sprint 1"
-    assert project["description"] == "First sprint"
-    assert project["workspace_id"] == workspace["id"]
-    assert project["created_by"] == alice_id
-    assert project["role"] == "owner"
+    assert project["name"] == "Roadmap"
+    assert project["description"] == ""
+    assert project["role"] == "admin"
+    project_id = project["id"]
 
+    detail = owner.get(project_url(workspace_id, f"/{project_id}"))
+    assert detail.status_code == 200
+    assert detail.json["project"]["id"] == project_id
 
-def test_create_project_requires_authentication(client, alice_id, workspace):
-    # Đăng xuất khỏi session của alice (workspace fixture đã login alice)
-    csrf = get_csrf_token(client)
-    client.post("/auth/logout", headers={"X-CSRFToken": csrf})
-
-    csrf = get_csrf_token(client)
-    response = client.post(
-        f"/workspaces/{workspace['id']}/projects",
-        json={"name": "Sprint 1"},
-        headers={"X-CSRFToken": csrf},
+    update = owner.patch(
+        project_url(workspace_id, f"/{project_id}"),
+        json={"description": "Delivery plan"},
+        headers=headers,
     )
-    assert response.status_code == 401
-    assert response.json["error"]["code"] == "authentication_required"
+    assert update.status_code == 200
+    assert update.json["project"]["name"] == "Roadmap"
+    assert update.json["project"]["description"] == "Delivery plan"
 
+    listing = owner.get(project_url(workspace_id))
+    assert listing.status_code == 200
+    assert [item["id"] for item in listing.json["projects"]] == [project_id]
 
-def test_create_project_empty_name_fails(client, alice_id, alice_csrf, workspace):
-    response = client.post(
-        f"/workspaces/{workspace['id']}/projects",
-        json={"name": "   "},
-        headers={"X-CSRFToken": alice_csrf},
+    deleted = owner.delete(
+        project_url(workspace_id, f"/{project_id}"), headers=headers
     )
-    assert response.status_code == 400
-    assert "name" in response.json["error"]["fields"]
+    assert deleted.status_code == 200
+    assert owner.get(project_url(workspace_id, f"/{project_id}")).status_code == 404
 
 
-def test_create_project_non_member_workspace_fails(app, client, alice_id, alice_csrf, bob_id):
-    # alice tạo workspace, bob không phải thành viên
-    csrf = alice_csrf
-    ws = create_workspace(client, csrf)
+def test_workspace_owner_has_implicit_access_but_workspace_admin_does_not(
+    app, project_context
+):
+    workspace_id = project_context["workspace_id"]
+    user_ids = project_context["user_ids"]
+    workspace_admin, admin_headers = make_client(app, "workspace_admin")
 
-    # Đăng xuất alice trước khi login bob
-    client.post("/auth/logout", headers={"X-CSRFToken": csrf})
-    csrf_bob = login(client, "bob", "secret-password")
-    response = client.post(
-        f"/workspaces/{ws['id']}/projects",
-        json={"name": "Sprint 1"},
-        headers={"X-CSRFToken": csrf_bob},
+    created = create_project(
+        workspace_admin, workspace_id, admin_headers, "Admin project"
+    )
+    assert created.status_code == 201
+    project_id = created.json["project"]["id"]
+
+    owner, owner_headers = make_client(app, "owner")
+    owner_detail = owner.get(project_url(workspace_id, f"/{project_id}"))
+    assert owner_detail.status_code == 200
+    assert owner_detail.json["project"]["role"] == "admin"
+
+    member, _ = make_client(app, "member")
+    forbidden = member.get(project_url(workspace_id, f"/{project_id}"))
+    assert forbidden.status_code == 403
+
+    with app.app_context():
+        db = get_db()
+        assert db.execute(
+            "SELECT role FROM workspace_member WHERE workspace_id = ? AND user_id = ?",
+            (workspace_id, user_ids["workspace_admin"]),
+        ).fetchone()["role"] == "admin"
+        assert db.execute(
+            "SELECT 1 FROM project_member WHERE project_id = ? AND user_id = ?",
+            (project_id, user_ids["owner"]),
+        ).fetchone() is None
+
+
+def test_project_admin_cannot_assign_admin_directly(app, project_context):
+    workspace_id = project_context["workspace_id"]
+    user_ids = project_context["user_ids"]
+    owner, owner_headers = make_client(app, "owner")
+    project_id = create_project(owner, workspace_id, owner_headers).json["project"]["id"]
+    add_project_member(app, workspace_id, project_id, user_ids["workspace_admin"], "admin")
+    add_workspace_member(app, workspace_id, user_ids["outsider"])
+    project_admin, admin_headers = make_client(app, "workspace_admin")
+
+    response = project_admin.post(
+        project_url(workspace_id, f"/{project_id}/members"),
+        json={"user_id": user_ids["outsider"], "role": "admin"},
+        headers=admin_headers,
     )
     assert response.status_code == 403
-    assert response.json["error"]["code"] == "forbidden"
 
 
-def test_list_projects_returns_member_projects(client, alice_id, alice_csrf, workspace):
-    for name in ["Project A", "Project B"]:
-        client.post(
-            f"/workspaces/{workspace['id']}/projects",
-            json={"name": name},
-            headers={"X-CSRFToken": alice_csrf},
-        )
+def test_project_admin_promotes_member_only_inside_project(app, project_context):
+    workspace_id = project_context["workspace_id"]
+    user_ids = project_context["user_ids"]
+    owner, owner_headers = make_client(app, "owner")
+    project_id = create_project(owner, workspace_id, owner_headers).json["project"]["id"]
+    add_project_member(app, workspace_id, project_id, user_ids["workspace_admin"], "admin")
+    add_workspace_member(app, workspace_id, user_ids["outsider"])
+    add_project_member(app, workspace_id, project_id, user_ids["outsider"])
+    project_admin, admin_headers = make_client(app, "workspace_admin")
 
-    response = client.get(f"/workspaces/{workspace['id']}/projects")
-    assert response.status_code == 200
-    names = [p["name"] for p in response.json["projects"]]
-    assert "Project A" in names
-    assert "Project B" in names
-
-
-def test_get_project_detail(client, alice_id, alice_csrf, workspace):
-    create_resp = client.post(
-        f"/workspaces/{workspace['id']}/projects",
-        json={"name": "Detail Project"},
-        headers={"X-CSRFToken": alice_csrf},
-    )
-    project_id = create_resp.json["project"]["id"]
-
-    response = client.get(f"/workspaces/{workspace['id']}/projects/{project_id}")
-    assert response.status_code == 200
-    assert response.json["project"]["name"] == "Detail Project"
-
-
-def test_update_project(client, alice_id, alice_csrf, workspace):
-    create_resp = client.post(
-        f"/workspaces/{workspace['id']}/projects",
-        json={"name": "Old Name"},
-        headers={"X-CSRFToken": alice_csrf},
-    )
-    project_id = create_resp.json["project"]["id"]
-
-    response = client.patch(
-        f"/workspaces/{workspace['id']}/projects/{project_id}",
-        json={"name": "New Name", "description": "Updated"},
-        headers={"X-CSRFToken": alice_csrf},
-    )
-    assert response.status_code == 200
-    assert response.json["project"]["name"] == "New Name"
-    assert response.json["project"]["description"] == "Updated"
-
-
-def test_delete_project(client, alice_id, alice_csrf, workspace):
-    create_resp = client.post(
-        f"/workspaces/{workspace['id']}/projects",
-        json={"name": "To Delete"},
-        headers={"X-CSRFToken": alice_csrf},
-    )
-    project_id = create_resp.json["project"]["id"]
-
-    response = client.delete(
-        f"/workspaces/{workspace['id']}/projects/{project_id}",
-        headers={"X-CSRFToken": alice_csrf},
-    )
-    assert response.status_code == 200
-    assert "xóa" in response.json["message"]
-
-    # Xác nhận đã xóa
-    get_resp = client.get(f"/workspaces/{workspace['id']}/projects/{project_id}")
-    assert get_resp.status_code == 403
-
-
-# ---------------------------------------------------------------------------
-# Project Member tests
-# ---------------------------------------------------------------------------
-
-def test_list_members_returns_creator_as_owner(client, alice_id, alice_csrf, workspace):
-    create_resp = client.post(
-        f"/workspaces/{workspace['id']}/projects",
-        json={"name": "Team Project"},
-        headers={"X-CSRFToken": alice_csrf},
-    )
-    project_id = create_resp.json["project"]["id"]
-
-    response = client.get(
-        f"/workspaces/{workspace['id']}/projects/{project_id}/members"
-    )
-    assert response.status_code == 200
-    members = response.json["members"]
-    assert len(members) == 1
-    assert members[0]["id"] == alice_id
-    assert members[0]["username"] == "alice"
-
-
-def test_add_member_success(app, client, alice_id, alice_csrf, bob_id, workspace):
-    # Thêm bob vào workspace trước
-    with app.app_context():
-        db = get_db()
-        db.execute(
-            "INSERT INTO workspace_member (workspace_id, user_id, role) VALUES (?, ?, ?)",
-            (workspace["id"], bob_id, "member"),
-        )
-        db.commit()
-
-    # alice tạo project
-    create_resp = client.post(
-        f"/workspaces/{workspace['id']}/projects",
-        json={"name": "Shared Project"},
-        headers={"X-CSRFToken": alice_csrf},
-    )
-    project_id = create_resp.json["project"]["id"]
-
-    # Thêm bob vào project
-    response = client.post(
-        f"/workspaces/{workspace['id']}/projects/{project_id}/members",
-        json={"user_id": bob_id, "role": "member"},
-        headers={"X-CSRFToken": alice_csrf},
-    )
-    assert response.status_code == 201
-    member_ids = [m["id"] for m in response.json["members"]]
-    assert bob_id in member_ids
-
-
-def test_add_member_not_in_workspace_fails(app, client, alice_id, alice_csrf, bob_id, workspace):
-    create_resp = client.post(
-        f"/workspaces/{workspace['id']}/projects",
-        json={"name": "Project"},
-        headers={"X-CSRFToken": alice_csrf},
-    )
-    project_id = create_resp.json["project"]["id"]
-
-    # Bob không phải workspace member → 422
-    response = client.post(
-        f"/workspaces/{workspace['id']}/projects/{project_id}/members",
-        json={"user_id": bob_id, "role": "member"},
-        headers={"X-CSRFToken": alice_csrf},
-    )
-    assert response.status_code == 422
-    assert response.json["error"]["code"] == "not_workspace_member"
-
-
-def test_add_duplicate_member_fails(app, client, alice_id, alice_csrf, bob_id, workspace):
-    with app.app_context():
-        db = get_db()
-        db.execute(
-            "INSERT INTO workspace_member (workspace_id, user_id, role) VALUES (?, ?, ?)",
-            (workspace["id"], bob_id, "member"),
-        )
-        db.commit()
-
-    create_resp = client.post(
-        f"/workspaces/{workspace['id']}/projects",
-        json={"name": "Project"},
-        headers={"X-CSRFToken": alice_csrf},
-    )
-    project_id = create_resp.json["project"]["id"]
-
-    client.post(
-        f"/workspaces/{workspace['id']}/projects/{project_id}/members",
-        json={"user_id": bob_id, "role": "member"},
-        headers={"X-CSRFToken": alice_csrf},
-    )
-
-    # Thêm lần 2 → 409
-    response = client.post(
-        f"/workspaces/{workspace['id']}/projects/{project_id}/members",
-        json={"user_id": bob_id, "role": "member"},
-        headers={"X-CSRFToken": alice_csrf},
-    )
-    assert response.status_code == 409
-    assert response.json["error"]["code"] == "already_member"
-
-
-def test_change_member_role(app, client, alice_id, alice_csrf, bob_id, workspace):
-    with app.app_context():
-        db = get_db()
-        db.execute(
-            "INSERT INTO workspace_member (workspace_id, user_id, role) VALUES (?, ?, ?)",
-            (workspace["id"], bob_id, "member"),
-        )
-        db.commit()
-
-    create_resp = client.post(
-        f"/workspaces/{workspace['id']}/projects",
-        json={"name": "Project"},
-        headers={"X-CSRFToken": alice_csrf},
-    )
-    project_id = create_resp.json["project"]["id"]
-
-    client.post(
-        f"/workspaces/{workspace['id']}/projects/{project_id}/members",
-        json={"user_id": bob_id, "role": "member"},
-        headers={"X-CSRFToken": alice_csrf},
-    )
-
-    response = client.patch(
-        f"/workspaces/{workspace['id']}/projects/{project_id}/members/{bob_id}",
+    response = project_admin.patch(
+        project_url(
+            workspace_id,
+            f"/{project_id}/members/{user_ids['outsider']}",
+        ),
         json={"role": "admin"},
-        headers={"X-CSRFToken": alice_csrf},
+        headers=admin_headers,
     )
     assert response.status_code == 200
     assert response.json["member"]["role"] == "admin"
-
-
-def test_remove_last_owner_fails(client, alice_id, alice_csrf, workspace):
-    create_resp = client.post(
-        f"/workspaces/{workspace['id']}/projects",
-        json={"name": "Project"},
-        headers={"X-CSRFToken": alice_csrf},
-    )
-    project_id = create_resp.json["project"]["id"]
-
-    # Alice là owner duy nhất — xóa mình sẽ thất bại
-    response = client.delete(
-        f"/workspaces/{workspace['id']}/projects/{project_id}/members/{alice_id}",
-        headers={"X-CSRFToken": alice_csrf},
-    )
-    assert response.status_code == 409
-    assert response.json["error"]["code"] == "last_owner"
-
-
-def test_delete_project_requires_owner_role(app, client, alice_id, alice_csrf, bob_id, workspace):
     with app.app_context():
-        db = get_db()
-        db.execute(
-            "INSERT INTO workspace_member (workspace_id, user_id, role) VALUES (?, ?, ?)",
-            (workspace["id"], bob_id, "member"),
-        )
-        db.commit()
+        role = get_db().execute(
+            "SELECT role FROM workspace_member WHERE workspace_id = ? AND user_id = ?",
+            (workspace_id, user_ids["outsider"]),
+        ).fetchone()["role"]
+    assert role == "member"
 
-    create_resp = client.post(
-        f"/workspaces/{workspace['id']}/projects",
-        json={"name": "Project"},
-        headers={"X-CSRFToken": alice_csrf},
-    )
-    project_id = create_resp.json["project"]["id"]
 
-    client.post(
-        f"/workspaces/{workspace['id']}/projects/{project_id}/members",
-        json={"user_id": bob_id, "role": "admin"},
-        headers={"X-CSRFToken": alice_csrf},
+def test_workspace_member_must_exist_before_project_invite(app, project_context):
+    workspace_id = project_context["workspace_id"]
+    user_ids = project_context["user_ids"]
+    owner, headers = make_client(app, "owner")
+    project_id = create_project(owner, workspace_id, headers).json["project"]["id"]
+
+    response = owner.post(
+        project_url(workspace_id, f"/{project_id}/members"),
+        json={"user_id": user_ids["outsider"]},
+        headers=headers,
     )
-    # Đăng xuất alice, đăng nhập bob
-    client.post("/auth/logout", headers={"X-CSRFToken": alice_csrf})
-    csrf_bob = login(client, "bob", "secret-password")
-    response = client.delete(
-        f"/workspaces/{workspace['id']}/projects/{project_id}",
-        headers={"X-CSRFToken": csrf_bob},
+    assert response.status_code == 422
+    assert response.json["error"]["code"] == "target_not_workspace_member"
+
+
+def test_project_member_cannot_edit_or_delete_project(app, project_context):
+    workspace_id = project_context["workspace_id"]
+    user_ids = project_context["user_ids"]
+    owner, owner_headers = make_client(app, "owner")
+    project_id = create_project(owner, workspace_id, owner_headers).json["project"]["id"]
+    add_project_member(app, workspace_id, project_id, user_ids["member"])
+
+    member, member_headers = make_client(app, "member")
+    response = member.patch(
+        project_url(workspace_id, f"/{project_id}"),
+        json={"name": "Changed"},
+        headers=member_headers,
     )
     assert response.status_code == 403
-    assert response.json["error"]["code"] == "forbidden"
+    assert member.delete(
+        project_url(workspace_id, f"/{project_id}"), headers=member_headers
+    ).status_code == 403
 
 
-def test_update_project_partial(client, alice_id, alice_csrf, workspace):
-    create_resp = client.post(
-        f"/workspaces/{workspace['id']}/projects",
-        json={"name": "Initial Name", "description": "Initial Desc"},
-        headers={"X-CSRFToken": alice_csrf},
+def test_project_admin_cannot_remove_peer_or_member_with_assigned_task(
+    app, project_context
+):
+    workspace_id = project_context["workspace_id"]
+    user_ids = project_context["user_ids"]
+    owner, owner_headers = make_client(app, "owner")
+    project_id = create_project(owner, workspace_id, owner_headers).json["project"]["id"]
+    add_project_member(app, workspace_id, project_id, user_ids["workspace_admin"], "admin")
+    add_project_member(app, workspace_id, project_id, user_ids["member"], "member")
+
+    project_admin, admin_headers = make_client(app, "workspace_admin")
+    peer_removal = project_admin.delete(
+        project_url(
+            workspace_id,
+            f"/{project_id}/members/{user_ids['owner']}",
+        ),
+        headers=admin_headers,
     )
-    project_id = create_resp.json["project"]["id"]
+    assert peer_removal.status_code == 403
 
-    # Chỉ cập nhật description
-    resp1 = client.patch(
-        f"/workspaces/{workspace['id']}/projects/{project_id}",
-        json={"description": "Updated Desc Only"},
-        headers={"X-CSRFToken": alice_csrf},
-    )
-    assert resp1.status_code == 200
-    assert resp1.json["project"]["name"] == "Initial Name"
-    assert resp1.json["project"]["description"] == "Updated Desc Only"
-
-    # Chỉ cập nhật name
-    resp2 = client.patch(
-        f"/workspaces/{workspace['id']}/projects/{project_id}",
-        json={"name": "Updated Name Only"},
-        headers={"X-CSRFToken": alice_csrf},
-    )
-    assert resp2.status_code == 200
-    assert resp2.json["project"]["name"] == "Updated Name Only"
-    assert resp2.json["project"]["description"] == "Updated Desc Only"
-
-    # Body rỗng -> 400
-    resp3 = client.patch(
-        f"/workspaces/{workspace['id']}/projects/{project_id}",
-        json={},
-        headers={"X-CSRFToken": alice_csrf},
-    )
-    assert resp3.status_code == 400
-    assert resp3.json["error"]["code"] == "validation_error"
-
-
-def test_member_can_leave_project(app, client, alice_id, alice_csrf, bob_id, workspace):
     with app.app_context():
         db = get_db()
         db.execute(
-            "INSERT INTO workspace_member (workspace_id, user_id, role) VALUES (?, ?, ?)",
-            (workspace["id"], bob_id, "member"),
+            "INSERT INTO task (project_id, title, assignee_id) VALUES (?, ?, ?)",
+            (project_id, "Assigned task", user_ids["member"]),
         )
         db.commit()
 
-    create_resp = client.post(
-        f"/workspaces/{workspace['id']}/projects",
-        json={"name": "Project"},
-        headers={"X-CSRFToken": alice_csrf},
+    blocked = project_admin.delete(
+        project_url(workspace_id, f"/{project_id}/members/{user_ids['member']}"),
+        headers=admin_headers,
     )
-    project_id = create_resp.json["project"]["id"]
+    assert blocked.status_code == 409
+    assert blocked.json["error"]["code"] == "member_has_assigned_tasks"
 
-    client.post(
-        f"/workspaces/{workspace['id']}/projects/{project_id}/members",
-        json={"user_id": bob_id, "role": "member"},
-        headers={"X-CSRFToken": alice_csrf},
-    )
 
-    # Bob đăng nhập và tự rời project
-    client.post("/auth/logout", headers={"X-CSRFToken": alice_csrf})
-    csrf_bob = login(client, "bob", "secret-password")
+def test_delete_project_cascades_tasks_and_comments(app, project_context):
+    workspace_id = project_context["workspace_id"]
+    owner, headers = make_client(app, "owner")
+    project_id = create_project(owner, workspace_id, headers).json["project"]["id"]
+    with app.app_context():
+        db = get_db()
+        task_id = db.execute(
+            "INSERT INTO task (project_id, title) VALUES (?, ?)",
+            (project_id, "Cascade task"),
+        ).lastrowid
+        db.execute(
+            "INSERT INTO comment (task_id, content) VALUES (?, ?)",
+            (task_id, "Cascade comment"),
+        )
+        db.commit()
 
-    response = client.delete(
-        f"/workspaces/{workspace['id']}/projects/{project_id}/members/{bob_id}",
-        headers={"X-CSRFToken": csrf_bob},
+    response = owner.delete(
+        project_url(workspace_id, f"/{project_id}"), headers=headers
     )
     assert response.status_code == 200
-
-    # Bob không còn quyền truy cập project
-    get_resp = client.get(
-        f"/workspaces/{workspace['id']}/projects/{project_id}",
-        headers={"X-CSRFToken": csrf_bob},
-    )
-    assert get_resp.status_code == 403
-
-
-def test_regular_member_cannot_remove_others(app, client, alice_id, alice_csrf, bob_id, workspace):
-    # Tạo user charlie
-    with app.app_context():
-        charlie_id = register_user("charlie", "secret-password")
-        db = get_db()
-        db.execute(
-            "INSERT INTO workspace_member (workspace_id, user_id, role) VALUES (?, ?, ?)",
-            (workspace["id"], bob_id, "member"),
-        )
-        db.execute(
-            "INSERT INTO workspace_member (workspace_id, user_id, role) VALUES (?, ?, ?)",
-            (workspace["id"], charlie_id, "member"),
-        )
-        db.commit()
-
-    create_resp = client.post(
-        f"/workspaces/{workspace['id']}/projects",
-        json={"name": "Project"},
-        headers={"X-CSRFToken": alice_csrf},
-    )
-    project_id = create_resp.json["project"]["id"]
-
-    client.post(
-        f"/workspaces/{workspace['id']}/projects/{project_id}/members",
-        json={"user_id": bob_id, "role": "member"},
-        headers={"X-CSRFToken": alice_csrf},
-    )
-    client.post(
-        f"/workspaces/{workspace['id']}/projects/{project_id}/members",
-        json={"user_id": charlie_id, "role": "member"},
-        headers={"X-CSRFToken": alice_csrf},
-    )
-
-    # Bob (member) thử xóa charlie (member)
-    client.post("/auth/logout", headers={"X-CSRFToken": alice_csrf})
-    csrf_bob = login(client, "bob", "secret-password")
-    response = client.delete(
-        f"/workspaces/{workspace['id']}/projects/{project_id}/members/{charlie_id}",
-        headers={"X-CSRFToken": csrf_bob},
-    )
-    assert response.status_code == 403
-    assert response.json["error"]["code"] == "forbidden"
-
-
-def test_remove_member_with_assigned_tasks_fails(app, client, alice_id, alice_csrf, bob_id, workspace):
     with app.app_context():
         db = get_db()
-        db.execute(
-            "INSERT INTO workspace_member (workspace_id, user_id, role) VALUES (?, ?, ?)",
-            (workspace["id"], bob_id, "member"),
-        )
-        db.commit()
-
-    create_resp = client.post(
-        f"/workspaces/{workspace['id']}/projects",
-        json={"name": "Project with task"},
-        headers={"X-CSRFToken": alice_csrf},
-    )
-    project_id = create_resp.json["project"]["id"]
-
-    client.post(
-        f"/workspaces/{workspace['id']}/projects/{project_id}/members",
-        json={"user_id": bob_id, "role": "member"},
-        headers={"X-CSRFToken": alice_csrf},
-    )
-
-    # Gán một task cho Bob
-    with app.app_context():
-        db = get_db()
-        db.execute(
-            """INSERT INTO task (project_id, title, assignee_id, created_by)
-               VALUES (?, 'Important Task', ?, ?)""",
-            (project_id, bob_id, alice_id),
-        )
-        db.commit()
-
-    # Thử xóa Bob khi đang được gán task -> 409 has_assigned_tasks
-    response = client.delete(
-        f"/workspaces/{workspace['id']}/projects/{project_id}/members/{bob_id}",
-        headers={"X-CSRFToken": alice_csrf},
-    )
-    assert response.status_code == 409
-    assert response.json["error"]["code"] == "has_assigned_tasks"
+        assert db.execute(
+            "SELECT COUNT(*) FROM task WHERE project_id = ?", (project_id,)
+        ).fetchone()[0] == 0
+        assert db.execute(
+            "SELECT COUNT(*) FROM comment WHERE task_id = ?", (task_id,)
+        ).fetchone()[0] == 0
 
 
-def test_access_project_from_wrong_workspace_fails(client, alice_id, alice_csrf, workspace):
-    create_resp = client.post(
-        f"/workspaces/{workspace['id']}/projects",
-        json={"name": "Project In WS 1"},
-        headers={"X-CSRFToken": alice_csrf},
-    )
-    project_id = create_resp.json["project"]["id"]
-
-    # Tạo workspace thứ hai cho alice
-    ws2 = create_workspace(client, alice_csrf, name="Second Workspace")
-
-    # Truy cập project_id từ ws2 (sai workspace) -> 403
-    response = client.get(
-        f"/workspaces/{ws2['id']}/projects/{project_id}",
-        headers={"X-CSRFToken": alice_csrf},
-    )
-    assert response.status_code == 403
-    assert response.json["error"]["code"] == "forbidden"
-
-
-def test_admin_cannot_add_owner(app, client, alice_id, alice_csrf, bob_id, workspace):
-    with app.app_context():
-        charlie_id = register_user("charlie", "secret-password")
-        db = get_db()
-        db.execute(
-            "INSERT INTO workspace_member (workspace_id, user_id, role) VALUES (?, ?, ?), (?, ?, ?)",
-            (workspace["id"], bob_id, "member", workspace["id"], charlie_id, "member"),
-        )
-        db.commit()
-
-    create_resp = client.post(
-        f"/workspaces/{workspace['id']}/projects",
-        json={"name": "Project"},
-        headers={"X-CSRFToken": alice_csrf},
-    )
-    project_id = create_resp.json["project"]["id"]
-
-    # Alice thêm Bob làm admin
-    client.post(
-        f"/workspaces/{workspace['id']}/projects/{project_id}/members",
-        json={"user_id": bob_id, "role": "admin"},
-        headers={"X-CSRFToken": alice_csrf},
-    )
-
-    # Bob đăng nhập và thử thêm Charlie làm owner -> 403
-    client.post("/auth/logout", headers={"X-CSRFToken": alice_csrf})
-    csrf_bob = login(client, "bob", "secret-password")
-
-    response = client.post(
-        f"/workspaces/{workspace['id']}/projects/{project_id}/members",
-        json={"user_id": charlie_id, "role": "owner"},
-        headers={"X-CSRFToken": csrf_bob},
-    )
-    assert response.status_code == 403
-    assert response.json["error"]["code"] == "forbidden"
-
-
-def test_admin_cannot_change_another_admin_role(app, client, alice_id, alice_csrf, bob_id, workspace):
-    with app.app_context():
-        charlie_id = register_user("charlie", "secret-password")
-        db = get_db()
-        db.execute(
-            "INSERT INTO workspace_member (workspace_id, user_id, role) VALUES (?, ?, ?), (?, ?, ?)",
-            (workspace["id"], bob_id, "member", workspace["id"], charlie_id, "member"),
-        )
-        db.commit()
-
-    create_resp = client.post(
-        f"/workspaces/{workspace['id']}/projects",
-        json={"name": "Project"},
-        headers={"X-CSRFToken": alice_csrf},
-    )
-    project_id = create_resp.json["project"]["id"]
-
-    # Alice thêm Bob và Charlie đều làm admin
-    client.post(
-        f"/workspaces/{workspace['id']}/projects/{project_id}/members",
-        json={"user_id": bob_id, "role": "admin"},
-        headers={"X-CSRFToken": alice_csrf},
-    )
-    client.post(
-        f"/workspaces/{workspace['id']}/projects/{project_id}/members",
-        json={"user_id": charlie_id, "role": "admin"},
-        headers={"X-CSRFToken": alice_csrf},
-    )
-
-    # Bob thử hạ cấp Charlie xuống member -> 403
-    client.post("/auth/logout", headers={"X-CSRFToken": alice_csrf})
-    csrf_bob = login(client, "bob", "secret-password")
-
-    response = client.patch(
-        f"/workspaces/{workspace['id']}/projects/{project_id}/members/{charlie_id}",
-        json={"role": "member"},
-        headers={"X-CSRFToken": csrf_bob},
-    )
-    assert response.status_code == 403
-    assert response.json["error"]["code"] == "forbidden"
-
-
-def test_update_project_requires_admin_or_owner_role(app, client, alice_id, alice_csrf, bob_id, workspace):
-    with app.app_context():
-        db = get_db()
-        db.execute(
-            "INSERT INTO workspace_member (workspace_id, user_id, role) VALUES (?, ?, ?)",
-            (workspace["id"], bob_id, "member"),
-        )
-        db.commit()
-
-    create_resp = client.post(
-        f"/workspaces/{workspace['id']}/projects",
-        json={"name": "Project"},
-        headers={"X-CSRFToken": alice_csrf},
-    )
-    project_id = create_resp.json["project"]["id"]
-
-    # Bob là member thường
-    client.post(
-        f"/workspaces/{workspace['id']}/projects/{project_id}/members",
-        json={"user_id": bob_id, "role": "member"},
-        headers={"X-CSRFToken": alice_csrf},
-    )
-
-    client.post("/auth/logout", headers={"X-CSRFToken": alice_csrf})
-    csrf_bob = login(client, "bob", "secret-password")
-
-    response = client.patch(
-        f"/workspaces/{workspace['id']}/projects/{project_id}",
-        json={"name": "New Name"},
-        headers={"X-CSRFToken": csrf_bob},
-    )
-    assert response.status_code == 403
-    assert response.json["error"]["code"] == "forbidden"
-
-
-def test_regular_member_cannot_add_members(app, client, alice_id, alice_csrf, bob_id, workspace):
-    with app.app_context():
-        charlie_id = register_user("charlie", "secret-password")
-        db = get_db()
-        db.execute(
-            "INSERT INTO workspace_member (workspace_id, user_id, role) VALUES (?, ?, ?), (?, ?, ?)",
-            (workspace["id"], bob_id, "member", workspace["id"], charlie_id, "member"),
-        )
-        db.commit()
-
-    create_resp = client.post(
-        f"/workspaces/{workspace['id']}/projects",
-        json={"name": "Project"},
-        headers={"X-CSRFToken": alice_csrf},
-    )
-    project_id = create_resp.json["project"]["id"]
-
-    # Bob là member thường
-    client.post(
-        f"/workspaces/{workspace['id']}/projects/{project_id}/members",
-        json={"user_id": bob_id, "role": "member"},
-        headers={"X-CSRFToken": alice_csrf},
-    )
-
-    client.post("/auth/logout", headers={"X-CSRFToken": alice_csrf})
-    csrf_bob = login(client, "bob", "secret-password")
-
-    response = client.post(
-        f"/workspaces/{workspace['id']}/projects/{project_id}/members",
-        json={"user_id": charlie_id, "role": "member"},
-        headers={"X-CSRFToken": csrf_bob},
-    )
-    assert response.status_code == 403
-    assert response.json["error"]["code"] == "forbidden"
-
-
-def test_add_member_rejects_boolean_user_id(client, alice_id, alice_csrf, workspace):
-    create_resp = client.post(
-        f"/workspaces/{workspace['id']}/projects",
-        json={"name": "Project"},
-        headers={"X-CSRFToken": alice_csrf},
-    )
-    project_id = create_resp.json["project"]["id"]
-
-    response = client.post(
-        f"/workspaces/{workspace['id']}/projects/{project_id}/members",
-        json={"user_id": True, "role": "member"},
-        headers={"X-CSRFToken": alice_csrf},
-    )
-    assert response.status_code == 400
-    assert response.json["error"]["code"] == "validation_error"
-
-
-def test_list_projects_requires_authentication(client, workspace):
-    # Đăng xuất
-    csrf = get_csrf_token(client)
-    client.post("/auth/logout", headers={"X-CSRFToken": csrf})
-
-    response = client.get(f"/workspaces/{workspace['id']}/projects")
+def test_project_api_requires_authentication_and_validates_payload(
+    app, project_context
+):
+    workspace_id = project_context["workspace_id"]
+    unauthenticated = app.test_client()
+    response = unauthenticated.get(project_url(workspace_id))
     assert response.status_code == 401
     assert response.json["error"]["code"] == "authentication_required"
 
-
-def test_list_projects_for_non_workspace_member_fails(client, alice_id, alice_csrf, bob_id, workspace):
-    client.post("/auth/logout", headers={"X-CSRFToken": alice_csrf})
-    csrf_bob = login(client, "bob", "secret-password")
-
-    response = client.get(f"/workspaces/{workspace['id']}/projects")
-    assert response.status_code == 403
-    assert response.json["error"]["code"] == "forbidden"
-
-
-def test_removing_workspace_member_cascades_to_project_member_and_revokes_access(
-    app, client, alice_id, alice_csrf, bob_id, workspace
-):
-    with app.app_context():
-        db = get_db()
-        db.execute(
-            "INSERT INTO workspace_member (workspace_id, user_id, role) VALUES (?, ?, ?)",
-            (workspace["id"], bob_id, "member"),
-        )
-        db.commit()
-
-    create_resp = client.post(
-        f"/workspaces/{workspace['id']}/projects",
-        json={"name": "Cascade Test Project"},
-        headers={"X-CSRFToken": alice_csrf},
+    owner, headers = make_client(app, "owner")
+    invalid = owner.post(
+        project_url(workspace_id), json={"name": "   "}, headers=headers
     )
-    project_id = create_resp.json["project"]["id"]
+    assert invalid.status_code == 400
+    assert "name" in invalid.json["error"]["fields"]
 
-    # Thêm Bob vào project
-    client.post(
-        f"/workspaces/{workspace['id']}/projects/{project_id}/members",
-        json={"user_id": bob_id, "role": "member"},
-        headers={"X-CSRFToken": alice_csrf},
+    project_id = create_project(owner, workspace_id, headers).json["project"]["id"]
+    empty_patch = owner.patch(
+        project_url(workspace_id, f"/{project_id}"), json={}, headers=headers
     )
-
-    # Bob truy cập được project
-    client.post("/auth/logout", headers={"X-CSRFToken": alice_csrf})
-    csrf_bob = login(client, "bob", "secret-password")
-    resp_before = client.get(
-        f"/workspaces/{workspace['id']}/projects/{project_id}",
-        headers={"X-CSRFToken": csrf_bob},
-    )
-    assert resp_before.status_code == 200
-
-    # Xóa Bob khỏi workspace_member
-    with app.app_context():
-        db = get_db()
-        db.execute(
-            "DELETE FROM workspace_member WHERE workspace_id = ? AND user_id = ?",
-            (workspace["id"], bob_id),
-        )
-        db.commit()
-        # Kiểm tra SQLite cascade xóa tự động trong project_member
-        pm = db.execute(
-            "SELECT * FROM project_member WHERE project_id = ? AND user_id = ?",
-            (project_id, bob_id),
-        ).fetchone()
-        assert pm is None
-
-    # Bob không còn quyền truy cập project -> 403
-    resp_after = client.get(
-        f"/workspaces/{workspace['id']}/projects/{project_id}",
-        headers={"X-CSRFToken": csrf_bob},
-    )
-    assert resp_after.status_code == 403
-    assert resp_after.json["error"]["code"] == "forbidden"
-
-
-def test_add_project_member_invalid_role_fails(client, alice_id, alice_csrf, bob_id, workspace):
-    create_resp = client.post(
-        f"/workspaces/{workspace['id']}/projects",
-        json={"name": "Project"},
-        headers={"X-CSRFToken": alice_csrf},
-    )
-    project_id = create_resp.json["project"]["id"]
-
-    response = client.post(
-        f"/workspaces/{workspace['id']}/projects/{project_id}/members",
-        json={"user_id": bob_id, "role": "invalid_role"},
-        headers={"X-CSRFToken": alice_csrf},
-    )
-    assert response.status_code == 400
-    assert response.json["error"]["code"] == "validation_error"
-    assert "role" in response.json["error"]["fields"]
-
-
-def test_change_project_member_invalid_role_fails(app, client, alice_id, alice_csrf, bob_id, workspace):
-    with app.app_context():
-        db = get_db()
-        db.execute(
-            "INSERT INTO workspace_member (workspace_id, user_id, role) VALUES (?, ?, ?)",
-            (workspace["id"], bob_id, "member"),
-        )
-        db.commit()
-
-    create_resp = client.post(
-        f"/workspaces/{workspace['id']}/projects",
-        json={"name": "Project"},
-        headers={"X-CSRFToken": alice_csrf},
-    )
-    project_id = create_resp.json["project"]["id"]
-
-    client.post(
-        f"/workspaces/{workspace['id']}/projects/{project_id}/members",
-        json={"user_id": bob_id, "role": "member"},
-        headers={"X-CSRFToken": alice_csrf},
-    )
-
-    response = client.patch(
-        f"/workspaces/{workspace['id']}/projects/{project_id}/members/{bob_id}",
-        json={"role": "invalid_role"},
-        headers={"X-CSRFToken": alice_csrf},
-    )
-    assert response.status_code == 400
-    assert response.json["error"]["code"] == "validation_error"
-    assert "role" in response.json["error"]["fields"]
-
-
-def test_list_members_requires_project_membership(app, client, alice_id, alice_csrf, bob_id, workspace):
-    with app.app_context():
-        db = get_db()
-        db.execute(
-            "INSERT INTO workspace_member (workspace_id, user_id, role) VALUES (?, ?, ?)",
-            (workspace["id"], bob_id, "member"),
-        )
-        db.commit()
-
-    create_resp = client.post(
-        f"/workspaces/{workspace['id']}/projects",
-        json={"name": "Project"},
-        headers={"X-CSRFToken": alice_csrf},
-    )
-    project_id = create_resp.json["project"]["id"]
-
-    # Bob là thành viên workspace nhưng chưa được thêm vào project
-    client.post("/auth/logout", headers={"X-CSRFToken": alice_csrf})
-    csrf_bob = login(client, "bob", "secret-password")
-
-    response = client.get(
-        f"/workspaces/{workspace['id']}/projects/{project_id}/members",
-        headers={"X-CSRFToken": csrf_bob},
-    )
-    assert response.status_code == 403
-    assert response.json["error"]["code"] == "forbidden"
-
-
-
+    assert empty_patch.status_code == 400

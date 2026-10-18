@@ -19,7 +19,7 @@ def seeded_app(app):
             INSERT INTO project (id, workspace_id, name)
                 VALUES (1, 1, 'App'), (2, 2, 'Other app'), (3, 1, 'Second app');
             INSERT INTO project_member (project_id, workspace_id, user_id, role)
-                VALUES (1, 1, 1, 'owner'), (2, 2, 2, 'owner');
+                VALUES (1, 1, 1, 'admin'), (2, 2, 2, 'admin');
             INSERT INTO task (id, project_id, created_by, assignee_id, title)
                 VALUES (1, 1, 1, 1, 'First task');
             INSERT INTO comment (task_id, author_id, content)
@@ -64,6 +64,7 @@ def test_init_db_creates_indexes_after_migrations(app):
         "idx_project_updater",
         "idx_task_updater",
         "idx_comment_updater",
+        "uq_workspace_single_owner",
     } <= indexes
 
 
@@ -76,6 +77,85 @@ def test_init_db_preserves_data(seeded_app):
         assert db.execute("SELECT username FROM user WHERE id = 1").fetchone()[0] == "demo"
         assert db.execute("SELECT COUNT(*) FROM task").fetchone()[0] == 1
         assert db.execute("SELECT COUNT(*) FROM comment").fetchone()[0] == 1
+
+
+def test_workspace_owner_is_unique_per_workspace(seeded_app):
+    with seeded_app.app_context():
+        db = get_db()
+        db.execute(
+            "INSERT INTO user (id, username, password_hash) "
+            "VALUES (3, 'third', 'placeholder')"
+        )
+        with pytest.raises(sqlite3.IntegrityError):
+            db.execute(
+                "INSERT INTO workspace_member (workspace_id, user_id, role) "
+                "VALUES (1, 3, 'owner')"
+            )
+        db.rollback()
+
+
+def test_init_db_rejects_legacy_workspace_with_multiple_owners(seeded_app):
+    with seeded_app.app_context():
+        db = get_db()
+        db.execute(
+            "INSERT INTO user (id, username, password_hash) "
+            "VALUES (3, 'third', 'placeholder')"
+        )
+        db.execute("DROP INDEX uq_workspace_single_owner")
+        db.execute(
+            "INSERT INTO workspace_member (workspace_id, user_id, role) "
+            "VALUES (1, 3, 'owner')"
+        )
+        db.execute("DELETE FROM schema_migration WHERE version = 4")
+        db.commit()
+
+        with pytest.raises(RuntimeError, match="multiple Workspace Owners"):
+            from app.db import init_db
+
+            init_db()
+
+        assert db.execute(
+            "SELECT COUNT(*) FROM workspace_member "
+            "WHERE workspace_id = 1 AND role = 'owner'"
+        ).fetchone()[0] == 2
+        assert db.execute(
+            "SELECT 1 FROM schema_migration WHERE version = 4"
+        ).fetchone() is None
+
+
+def test_init_db_rejects_legacy_workspace_without_an_owner(seeded_app):
+    with seeded_app.app_context():
+        db = get_db()
+        db.execute(
+            "INSERT INTO user (id, username, password_hash) "
+            "VALUES (3, 'third', 'placeholder')"
+        )
+        db.execute(
+            "INSERT INTO workspace (id, name) VALUES (3, 'Ownerless team')"
+        )
+        db.execute(
+            "INSERT INTO workspace_member (workspace_id, user_id, role) "
+            "VALUES (3, 3, 'owner')"
+        )
+        db.execute(
+            "DELETE FROM workspace_member "
+            "WHERE workspace_id = 3 AND role = 'owner'"
+        )
+        db.execute("DELETE FROM schema_migration WHERE version = 5")
+        db.commit()
+
+        with pytest.raises(RuntimeError, match="no Workspace Owner"):
+            from app.db import init_db
+
+            init_db()
+
+        assert db.execute(
+            "SELECT COUNT(*) FROM workspace_member "
+            "WHERE workspace_id = 3 AND role = 'owner'"
+        ).fetchone()[0] == 0
+        assert db.execute(
+            "SELECT 1 FROM schema_migration WHERE version = 5"
+        ).fetchone() is None
 
 
 def test_init_db_migrates_legacy_audit_columns_before_indexes(app, tmp_path):
@@ -142,6 +222,8 @@ def test_init_db_migrates_legacy_audit_columns_before_indexes(app, tmp_path):
         INSERT INTO user (id, username, password_hash)
             VALUES (1, 'legacy', 'placeholder');
         INSERT INTO workspace (id, name) VALUES (10, 'Legacy workspace');
+        INSERT INTO workspace_member (workspace_id, user_id, role)
+            VALUES (10, 1, 'owner');
         INSERT INTO project (id, workspace_id, name)
             VALUES (20, 10, 'Legacy project');
     """)
@@ -206,7 +288,7 @@ def test_init_db_migrates_legacy_audit_columns_before_indexes(app, tmp_path):
         "created_by": None,
         "updated_by": None,
     }
-    assert [row["version"] for row in applied_migrations] == [1, 2]
+    assert [row["version"] for row in applied_migrations] == [1, 2, 3, 4, 5, 6]
     assert legacy_user_timestamp
     assert tuple(audit_references) == (None, None, None, None)
     assert migrated_user_timestamp
@@ -219,6 +301,124 @@ def test_init_db_migrates_legacy_audit_columns_before_indexes(app, tmp_path):
         "idx_task_updater",
         "idx_comment_updater",
     } <= indexes
+
+
+def test_init_db_migrates_project_owner_to_admin_and_preserves_task_assignee(
+    app, tmp_path
+):
+    database = tmp_path / "project_owner.sqlite3"
+    legacy_db = sqlite3.connect(database)
+    legacy_db.executescript("""
+        PRAGMA foreign_keys = ON;
+        CREATE TABLE user (
+            id INTEGER PRIMARY KEY,
+            username TEXT NOT NULL UNIQUE,
+            password_hash TEXT NOT NULL,
+            created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+        );
+        CREATE TABLE workspace (
+            id INTEGER PRIMARY KEY,
+            name TEXT NOT NULL,
+            description TEXT NOT NULL DEFAULT '',
+            created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+        );
+        CREATE TABLE workspace_member (
+            workspace_id INTEGER NOT NULL,
+            user_id INTEGER NOT NULL,
+            role TEXT NOT NULL DEFAULT 'member'
+                CHECK (role IN ('owner', 'admin', 'member')),
+            joined_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            PRIMARY KEY (workspace_id, user_id),
+            FOREIGN KEY (workspace_id) REFERENCES workspace (id) ON DELETE CASCADE,
+            FOREIGN KEY (user_id) REFERENCES user (id) ON DELETE CASCADE
+        );
+        CREATE TABLE project (
+            id INTEGER PRIMARY KEY,
+            workspace_id INTEGER NOT NULL,
+            name TEXT NOT NULL,
+            description TEXT NOT NULL DEFAULT '',
+            created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            UNIQUE (id, workspace_id),
+            FOREIGN KEY (workspace_id) REFERENCES workspace (id) ON DELETE CASCADE
+        );
+        CREATE TABLE project_member (
+            project_id INTEGER NOT NULL,
+            workspace_id INTEGER NOT NULL,
+            user_id INTEGER NOT NULL,
+            role TEXT NOT NULL DEFAULT 'member'
+                CHECK (role IN ('owner', 'admin', 'member')),
+            joined_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            PRIMARY KEY (project_id, user_id),
+            FOREIGN KEY (project_id, workspace_id)
+                REFERENCES project (id, workspace_id) ON DELETE CASCADE,
+            FOREIGN KEY (workspace_id, user_id)
+                REFERENCES workspace_member (workspace_id, user_id)
+                ON DELETE CASCADE
+        );
+        CREATE TABLE task (
+            id INTEGER PRIMARY KEY,
+            project_id INTEGER NOT NULL,
+            created_by INTEGER,
+            assignee_id INTEGER,
+            title TEXT NOT NULL,
+            description TEXT NOT NULL DEFAULT '',
+            status TEXT NOT NULL DEFAULT 'todo',
+            due_date TEXT,
+            created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (project_id) REFERENCES project (id) ON DELETE CASCADE,
+            FOREIGN KEY (created_by) REFERENCES user (id) ON DELETE SET NULL,
+            FOREIGN KEY (project_id, assignee_id)
+                REFERENCES project_member (project_id, user_id) ON DELETE NO ACTION
+        );
+        INSERT INTO user (id, username, password_hash)
+            VALUES (1, 'legacy-owner', 'placeholder');
+        INSERT INTO workspace (id, name) VALUES (1, 'Workspace');
+        INSERT INTO workspace_member (workspace_id, user_id, role)
+            VALUES (1, 1, 'owner');
+        INSERT INTO project (id, workspace_id, name)
+            VALUES (10, 1, 'Project');
+        INSERT INTO project_member (project_id, workspace_id, user_id, role)
+            VALUES (10, 1, 1, 'owner');
+        INSERT INTO task (id, project_id, created_by, assignee_id, title)
+            VALUES (100, 10, 1, 1, 'Assigned before migration');
+    """)
+    legacy_db.close()
+
+    app.config["DATABASE"] = str(database)
+    with app.app_context():
+        from app.db import init_db
+
+        init_db()
+        db = get_db()
+        member = db.execute(
+            "SELECT workspace_id, user_id, role, joined_at "
+            "FROM project_member WHERE project_id = 10"
+        ).fetchone()
+        task = db.execute(
+            "SELECT project_id, assignee_id FROM task WHERE id = 100"
+        ).fetchone()
+        foreign_key_errors = db.execute("PRAGMA foreign_key_check").fetchall()
+        with pytest.raises(sqlite3.IntegrityError):
+            db.execute(
+                "UPDATE project_member SET role = 'owner' WHERE project_id = 10"
+            )
+        db.rollback()
+        with pytest.raises(sqlite3.IntegrityError):
+            db.execute(
+                "DELETE FROM project_member WHERE project_id = 10 AND user_id = 1"
+            )
+            db.commit()
+        db.rollback()
+
+    assert member["role"] == "admin"
+    assert member["workspace_id"] == 1
+    assert member["user_id"] == 1
+    assert member["joined_at"]
+    assert tuple(task) == (10, 1)
+    assert foreign_key_errors == []
 
 
 def test_defaults_and_unassigned_task(seeded_app):
@@ -253,6 +453,8 @@ def test_defaults_and_unassigned_task(seeded_app):
     "INSERT INTO workspace_member (workspace_id, user_id) VALUES (1, 1)",
     "INSERT INTO project_member (project_id, workspace_id, user_id) VALUES (1, 1, 1)",
     "INSERT INTO workspace_member (workspace_id, user_id, role) VALUES (1, 2, 'invalid')",
+    "INSERT INTO project_member (project_id, workspace_id, user_id, role) VALUES (1, 1, 2, 'owner')",
+    "UPDATE project_member SET role = 'owner' WHERE project_id = 1",
     "UPDATE project_member SET role = 'invalid' WHERE project_id = 1",
     "INSERT INTO project_member (project_id, workspace_id, user_id) VALUES (1, 1, 2)",
     "INSERT INTO project_member (project_id, workspace_id, user_id) VALUES (1, 2, 2)",

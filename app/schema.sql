@@ -47,7 +47,7 @@ CREATE TABLE IF NOT EXISTS project_member (
     project_id INTEGER NOT NULL,
     workspace_id INTEGER NOT NULL,
     user_id INTEGER NOT NULL,
-    role TEXT NOT NULL DEFAULT 'member' CHECK (role IN ('owner', 'admin', 'member')),
+    role TEXT NOT NULL DEFAULT 'member' CHECK (role IN ('admin', 'member')),
     joined_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
     PRIMARY KEY (project_id, user_id),
     -- Composite keys prevent membership in a project from another workspace.
