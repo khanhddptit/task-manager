@@ -59,7 +59,10 @@ def _validate_ids(workspace_id, project_id, actor_id, task_id=None):
 def _validate_title(title):
     if not isinstance(title, str) or not title.strip():
         raise InvalidTaskDataError("title phải là chuỗi không được để trống.")
-    return title.strip()
+    title = title.strip()
+    if len(title) > 255:
+        raise InvalidTaskDataError("title không được vượt quá 255 ký tự.")
+    return title
 
 
 def _validate_description(description):

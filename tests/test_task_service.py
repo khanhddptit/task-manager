@@ -110,6 +110,33 @@ def test_task_crud_and_stable_project_listing(app):
             )
 
 
+def test_create_rejects_title_longer_than_255_characters(app):
+    ids = make_project(app)
+    with app.app_context():
+        with pytest.raises(InvalidTaskDataError):
+            create_task(
+                ids["workspace_id"],
+                ids["project_id"],
+                ids["admin_id"],
+                "T" * 256,
+            )
+
+        assert get_db().execute("SELECT COUNT(*) FROM task").fetchone()[0] == 0
+
+
+def test_create_accepts_title_of_255_characters(app):
+    ids = make_project(app)
+    with app.app_context():
+        task = create_task(
+            ids["workspace_id"],
+            ids["project_id"],
+            ids["admin_id"],
+            "T" * 255,
+        )
+
+        assert len(task["title"]) == 255
+
+
 @pytest.mark.parametrize(
     "values",
     [
