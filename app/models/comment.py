@@ -23,7 +23,7 @@ def get_user_permissions(user_id, workspace_id, project_id):
     """
     Lấy thông tin quyền hạn của người dùng:
     - is_workspace_owner: True nếu user là owner của workspace.
-    - project_role: vai trò trong project ('admin', 'member', ...) hoặc None nếu không thuộc project.
+    - project_role: vai trò trong project ('admin', 'member') hoặc None nếu không thuộc project.
     """
     db = get_db()
     ws_member = db.execute(
@@ -109,15 +109,13 @@ def insert_comment(task_id, author_id, content):
     """
     Tạo comment mới với audit timestamps và người tạo.
     """
-    db = get_db()
-    with db:
-        cursor = db.execute(
-            """
-            INSERT INTO comment (task_id, author_id, content, created_at, updated_at, updated_by)
-            VALUES (?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, ?)
-            """,
-            (task_id, author_id, content, author_id),
-        )
+    cursor = get_db().execute(
+        """
+        INSERT INTO comment (task_id, author_id, content, created_at, updated_at, updated_by)
+        VALUES (?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, ?)
+        """,
+        (task_id, author_id, content, author_id),
+    )
     return cursor.lastrowid
 
 
@@ -125,24 +123,20 @@ def update_comment(comment_id, content, updated_by):
     """
     Cập nhật nội dung comment và thông tin audit updated_at, updated_by.
     """
-    db = get_db()
-    with db:
-        db.execute(
-            """
-            UPDATE comment
-            SET content = ?,
-                updated_at = CURRENT_TIMESTAMP,
-                updated_by = ?
-            WHERE id = ?
-            """,
-            (content, updated_by, comment_id),
-        )
+    get_db().execute(
+        """
+        UPDATE comment
+        SET content = ?,
+            updated_at = CURRENT_TIMESTAMP,
+            updated_by = ?
+        WHERE id = ?
+        """,
+        (content, updated_by, comment_id),
+    )
 
 
 def delete_comment(comment_id):
     """
     Xóa comment theo ID.
     """
-    db = get_db()
-    with db:
-        db.execute("DELETE FROM comment WHERE id = ?", (comment_id,))
+    get_db().execute("DELETE FROM comment WHERE id = ?", (comment_id,))

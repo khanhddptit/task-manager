@@ -1,4 +1,5 @@
 from app.auth.validation import ValidationError
+from app.db import get_db
 from app.models.comment import (
     check_task_hierarchy,
     delete_comment,
@@ -80,13 +81,15 @@ def create_comment(workspace_id, project_id, task_id, data, user_id):
     """
     Thêm bình luận mới vào task.
     Chỉ cho phép Project Admin/Member hoặc Workspace Owner tạo bình luận.
+    Kiểm tra quyền và ghi dữ liệu trong cùng một transaction.
     """
-    _ensure_task_exists(workspace_id, project_id, task_id)
-    _ensure_project_access(user_id, workspace_id, project_id)
     content = validate_comment_payload(data)
-
-    comment_id = insert_comment(task_id, user_id, content)
-    return get_comment_by_id(comment_id)
+    db = get_db()
+    with db:
+        _ensure_task_exists(workspace_id, project_id, task_id)
+        _ensure_project_access(user_id, workspace_id, project_id)
+        comment_id = insert_comment(task_id, user_id, content)
+        return get_comment_by_id(comment_id)
 
 
 def update_comment_content(workspace_id, project_id, task_id, comment_id, data, user_id):
@@ -96,26 +99,28 @@ def update_comment_content(workspace_id, project_id, task_id, comment_id, data, 
     1. Comment phải tồn tại và thuộc đúng task/project/workspace.
     2. Người dùng phải còn quyền truy cập project.
     3. Chỉ tác giả (author_id == user_id) mới được sửa nội dung.
+    Kiểm tra quyền và ghi dữ liệu trong cùng một transaction.
     """
-    _ensure_task_exists(workspace_id, project_id, task_id)
-    comment = get_comment_by_id(comment_id)
-    if (
-        comment is None
-        or comment["task_id"] != task_id
-        or comment["project_id"] != project_id
-        or comment["workspace_id"] != workspace_id
-    ):
-        raise CommentNotFoundError("Không tìm thấy bình luận.")
-
-    # Kiểm tra tác giả còn quyền truy cập project hay không
-    _ensure_project_access(user_id, workspace_id, project_id)
-
-    if comment["author_id"] != user_id:
-        raise CommentForbiddenError("Bạn chỉ có thể chỉnh sửa bình luận của chính mình.")
-
     content = validate_comment_payload(data)
-    update_comment(comment_id, content, user_id)
-    return get_comment_by_id(comment_id)
+    db = get_db()
+    with db:
+        _ensure_task_exists(workspace_id, project_id, task_id)
+        comment = get_comment_by_id(comment_id)
+        if (
+            comment is None
+            or comment["task_id"] != task_id
+            or comment["project_id"] != project_id
+            or comment["workspace_id"] != workspace_id
+        ):
+            raise CommentNotFoundError("Không tìm thấy bình luận.")
+
+        _ensure_project_access(user_id, workspace_id, project_id)
+
+        if comment["author_id"] != user_id:
+            raise CommentForbiddenError("Bạn chỉ có thể chỉnh sửa bình luận của chính mình.")
+
+        update_comment(comment_id, content, user_id)
+        return get_comment_by_id(comment_id)
 
 
 def delete_comment_by_id(workspace_id, project_id, task_id, comment_id, user_id):
@@ -125,27 +130,30 @@ def delete_comment_by_id(workspace_id, project_id, task_id, comment_id, user_id)
     1. Comment phải tồn tại và thuộc đúng task/project/workspace.
     2. Người dùng được phép xóa nếu là:
        - Tác giả của bình luận VÀ còn quyền truy cập project.
-       - HOẶC Project Admin của project đó.
+       - HOẶC Project Admin của project đó (role == 'admin').
        - HOẶC Workspace Owner của workspace đó.
+    Kiểm tra quyền và xóa dữ liệu trong cùng một transaction.
     """
-    _ensure_task_exists(workspace_id, project_id, task_id)
-    comment = get_comment_by_id(comment_id)
-    if (
-        comment is None
-        or comment["task_id"] != task_id
-        or comment["project_id"] != project_id
-        or comment["workspace_id"] != workspace_id
-    ):
-        raise CommentNotFoundError("Không tìm thấy bình luận.")
+    db = get_db()
+    with db:
+        _ensure_task_exists(workspace_id, project_id, task_id)
+        comment = get_comment_by_id(comment_id)
+        if (
+            comment is None
+            or comment["task_id"] != task_id
+            or comment["project_id"] != project_id
+            or comment["workspace_id"] != workspace_id
+        ):
+            raise CommentNotFoundError("Không tìm thấy bình luận.")
 
-    perms = get_user_permissions(user_id, workspace_id, project_id)
-    has_project_access = perms["is_workspace_owner"] or perms["project_role"] is not None
+        perms = get_user_permissions(user_id, workspace_id, project_id)
+        has_project_access = perms["is_workspace_owner"] or perms["project_role"] is not None
 
-    is_author_with_access = (comment["author_id"] == user_id) and has_project_access
-    is_project_admin = perms["project_role"] in ("admin", "owner")
-    is_workspace_owner = perms["is_workspace_owner"]
+        is_author_with_access = (comment["author_id"] == user_id) and has_project_access
+        is_project_admin = perms["project_role"] == "admin"
+        is_workspace_owner = perms["is_workspace_owner"]
 
-    if not (is_author_with_access or is_project_admin or is_workspace_owner):
-        raise CommentForbiddenError("Bạn không có quyền xóa bình luận này.")
+        if not (is_author_with_access or is_project_admin or is_workspace_owner):
+            raise CommentForbiddenError("Bạn không có quyền xóa bình luận này.")
 
-    delete_comment(comment_id)
+        delete_comment(comment_id)

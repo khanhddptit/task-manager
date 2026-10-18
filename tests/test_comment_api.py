@@ -657,3 +657,55 @@ def test_cascade_delete_task_deletes_comments(client, seeded_env, app):
         # Comment tự động bị xóa theo CASCADE
         assert db.execute("SELECT COUNT(*) FROM comment WHERE task_id = ?", (t_id,)).fetchone()[0] == 0
         assert db.execute("PRAGMA foreign_key_check").fetchall() == []
+
+
+def test_project_admin_strictly_requires_admin_role(client, seeded_env, app):
+    # Tạo comment bởi member_user
+    member_csrf = login(client, "member_user")
+    ws_id = seeded_env["workspace_id"]
+    p_id = seeded_env["project_id"]
+    t_id = seeded_env["task_id"]
+
+    res = client.post(
+        f"/workspaces/{ws_id}/projects/{p_id}/tasks/{t_id}/comments",
+        json={"content": "Comment của member"},
+        headers={"X-CSRFToken": member_csrf},
+    )
+    c_id = res.json["comment"]["id"]
+
+    # Đảm bảo admin_user có role 'admin' trong project_member và xóa thành công
+    admin_csrf = login(client, "admin_user")
+    del_res = client.delete(
+        f"/workspaces/{ws_id}/projects/{p_id}/tasks/{t_id}/comments/{c_id}",
+        headers={"X-CSRFToken": admin_csrf},
+    )
+    assert del_res.status_code == 200
+
+    # Nếu admin_user bị hạ quyền xuống 'member' trong project_member
+    with app.app_context():
+        db = get_db()
+        db.execute(
+            "UPDATE project_member SET role = 'member' WHERE project_id = ? AND user_id = ?",
+            (p_id, seeded_env["admin_id"]),
+        )
+        db.commit()
+
+    # Đăng nhập lại member để tạo comment mới
+    member_csrf = login(client, "member_user")
+    res2 = client.post(
+        f"/workspaces/{ws_id}/projects/{p_id}/tasks/{t_id}/comments",
+        json={"content": "Comment mới của member"},
+        headers={"X-CSRFToken": member_csrf},
+    )
+    assert res2.status_code == 201
+    c_id2 = res2.json["comment"]["id"]
+
+    # admin_user giờ chỉ là 'member' -> xóa comment của người khác bị 403
+    admin_csrf = login(client, "admin_user")
+    del_res2 = client.delete(
+        f"/workspaces/{ws_id}/projects/{p_id}/tasks/{t_id}/comments/{c_id2}",
+        headers={"X-CSRFToken": admin_csrf},
+    )
+    assert del_res2.status_code == 403
+    assert del_res2.json["error"]["code"] == "forbidden"
+
