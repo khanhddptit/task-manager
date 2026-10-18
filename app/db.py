@@ -1,4 +1,5 @@
 import sqlite3
+from contextlib import contextmanager
 
 import click
 from flask import current_app, g
@@ -11,6 +12,19 @@ def get_db():
         g.db.row_factory = sqlite3.Row
         g.db.execute("PRAGMA foreign_keys = ON")
     return g.db
+
+
+@contextmanager
+def write_transaction():
+    """Run a write operation under an immediate SQLite transaction."""
+    db = get_db()
+    db.execute("BEGIN IMMEDIATE")
+    try:
+        yield db
+        db.commit()
+    except BaseException:
+        db.rollback()
+        raise
 
 
 def close_db(error=None):
