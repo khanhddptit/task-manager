@@ -175,7 +175,7 @@ def test_legacy_migration_preserves_data_and_can_run_repeatedly(app, tmp_path):
         "name": "Legacy project",
         "created_by": None,
     }
-    assert migration["MAX(version)"] == 5
+    assert migration["MAX(version)"] == 6
     assert UTC_TIMESTAMP_FORMAT.fullmatch(new_user_updated_at)
     assert "updated_at" in columns["user"]
     assert all("updated_by" in columns[table] for table in columns if table != "user")

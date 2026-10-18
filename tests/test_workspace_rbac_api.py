@@ -242,7 +242,10 @@ def test_project_admin_can_add_workspace_member_to_own_project(
     )
 
     assert response.status_code == 201
-    assert response.json["member"]["role"] == "member"
+    assert any(
+        member["id"] == rbac_world["outsider"] and member["role"] == "member"
+        for member in response.json["members"]
+    )
     with app.app_context():
         membership = get_db().execute(
             "SELECT role FROM project_member "
@@ -272,7 +275,10 @@ def test_workspace_owner_can_add_project_admin_for_existing_workspace_member(
     )
 
     assert response.status_code == 201
-    assert response.json["member"]["role"] == "admin"
+    assert any(
+        member["id"] == rbac_world["outsider"] and member["role"] == "admin"
+        for member in response.json["members"]
+    )
 
 
 def test_project_member_add_rejects_user_outside_workspace(client, rbac_world):
@@ -284,7 +290,7 @@ def test_project_member_add_rejects_user_outside_workspace(client, rbac_world):
         headers={"X-CSRFToken": csrf_token},
     )
 
-    assert response.status_code == 409
+    assert response.status_code == 422
     assert response.json["error"]["code"] == "target_not_workspace_member"
 
 

@@ -17,11 +17,13 @@ def get_db():
 @contextmanager
 def write_transaction():
     db = get_db()
+    if db.in_transaction:
+        raise RuntimeError("Nested write transactions are not supported.")
     db.execute("BEGIN IMMEDIATE")
     try:
         yield db
         db.commit()
-    except Exception:
+    except BaseException:
         db.rollback()
         raise
 

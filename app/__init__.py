@@ -31,6 +31,7 @@ def create_app(test_config=None):
 
     from app import db
     from app.auth import bp as auth_bp
+    from app.comments import bp as comments_bp
     from app.main import bp as main_bp
     from app.projects import bp as projects_bp
     from app.tasks import bp as tasks_bp
@@ -43,6 +44,7 @@ def create_app(test_config=None):
     app.register_blueprint(projects_bp)
     app.register_blueprint(tasks_bp)
     app.register_blueprint(workspaces_bp)
+    app.register_blueprint(comments_bp)
 
     def is_api_request():
         return any(

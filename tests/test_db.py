@@ -106,7 +106,7 @@ def test_init_db_rejects_legacy_workspace_with_multiple_owners(seeded_app):
             "INSERT INTO workspace_member (workspace_id, user_id, role) "
             "VALUES (1, 3, 'owner')"
         )
-        db.execute("DELETE FROM schema_migration WHERE version = 3")
+        db.execute("DELETE FROM schema_migration WHERE version = 4")
         db.commit()
 
         with pytest.raises(RuntimeError, match="multiple Workspace Owners"):
@@ -119,7 +119,7 @@ def test_init_db_rejects_legacy_workspace_with_multiple_owners(seeded_app):
             "WHERE workspace_id = 1 AND role = 'owner'"
         ).fetchone()[0] == 2
         assert db.execute(
-            "SELECT 1 FROM schema_migration WHERE version = 3"
+            "SELECT 1 FROM schema_migration WHERE version = 4"
         ).fetchone() is None
 
 
@@ -288,7 +288,7 @@ def test_init_db_migrates_legacy_audit_columns_before_indexes(app, tmp_path):
         "created_by": None,
         "updated_by": None,
     }
-    assert [row["version"] for row in applied_migrations] == [1, 2, 3, 4, 5]
+    assert [row["version"] for row in applied_migrations] == [1, 2, 3, 4, 5, 6]
     assert legacy_user_timestamp
     assert tuple(audit_references) == (None, None, None, None)
     assert migrated_user_timestamp
