@@ -51,7 +51,11 @@ def _validate_ids(workspace_id, project_id, actor_id, task_id=None):
     ):
         if (value is None and field != "task_id") or (
             value is not None
-            and (isinstance(value, bool) or not isinstance(value, int) or value <= 0)
+            and (
+                isinstance(value, bool)
+                or not isinstance(value, int)
+                or value <= 0
+            )
         ):
             raise InvalidTaskDataError(f"{field} phải là số nguyên dương.")
 
@@ -194,11 +198,19 @@ def get_task(workspace_id, project_id, actor_id, task_id):
     return task
 
 
-def list_tasks(workspace_id, project_id, actor_id):
+def list_tasks(
+    workspace_id, project_id, actor_id, status=None, assignee_id=None
+):
     _validate_ids(workspace_id, project_id, actor_id)
     context = _get_project_context(workspace_id, project_id, actor_id)
     _require_project_access(context)
-    return get_tasks_for_project(workspace_id, project_id)
+    if status is not None:
+        status = _validate_status(status)
+    if assignee_id is not None:
+        assignee_id = _validate_assignee_id(assignee_id)
+    return get_tasks_for_project(
+        workspace_id, project_id, status, assignee_id
+    )
 
 
 def update_task(workspace_id, project_id, actor_id, task_id, **changes):
@@ -250,8 +262,7 @@ def update_task(workspace_id, project_id, actor_id, task_id, **changes):
             normalized,
             actor_id,
         )
-        updated = get_task_by_id(workspace_id, project_id, task_id)
-    return updated
+        return get_task_by_id(workspace_id, project_id, task_id)
 
 
 def delete_task(workspace_id, project_id, actor_id, task_id):

@@ -19,9 +19,19 @@ def get_project_access_context(workspace_id, project_id, actor_id):
 def insert_task(project_id, actor_id, title, description, assignee_id, status, due_date):
     cursor = get_db().execute(
         """INSERT INTO task
-               (project_id, created_by, assignee_id, title, description, status, due_date)
-           VALUES (?, ?, ?, ?, ?, ?, ?)""",
-        (project_id, actor_id, assignee_id, title, description, status, due_date),
+               (project_id, created_by, assignee_id, updated_by, title,
+                description, status, due_date)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?)""",
+        (
+            project_id,
+            actor_id,
+            assignee_id,
+            actor_id,
+            title,
+            description,
+            status,
+            due_date,
+        ),
     )
     return cursor.lastrowid
 
@@ -38,16 +48,24 @@ def get_task_by_id(workspace_id, project_id, task_id):
     ).fetchone()
 
 
-def get_tasks_for_project(workspace_id, project_id):
+def get_tasks_for_project(workspace_id, project_id, status=None, assignee_id=None):
+    conditions = ["p.workspace_id = ?", "t.project_id = ?"]
+    parameters = [workspace_id, project_id]
+    if status is not None:
+        conditions.append("t.status = ?")
+        parameters.append(status)
+    if assignee_id is not None:
+        conditions.append("t.assignee_id = ?")
+        parameters.append(assignee_id)
     return get_db().execute(
-        """SELECT t.id, t.project_id, p.workspace_id, t.created_by,
-                  t.assignee_id, t.updated_by, t.title, t.description,
-                  t.status, t.due_date, t.created_at, t.updated_at
-           FROM task AS t
-           JOIN project AS p ON p.id = t.project_id
-           WHERE p.workspace_id = ? AND t.project_id = ?
-           ORDER BY t.created_at DESC, t.id DESC""",
-        (workspace_id, project_id),
+        f"""SELECT t.id, t.project_id, p.workspace_id, t.created_by,
+                   t.assignee_id, t.updated_by, t.title, t.description,
+                   t.status, t.due_date, t.created_at, t.updated_at
+            FROM task AS t
+            JOIN project AS p ON p.id = t.project_id
+            WHERE {" AND ".join(conditions)}
+            ORDER BY t.created_at DESC, t.id DESC""",
+        parameters,
     ).fetchall()
 
 
