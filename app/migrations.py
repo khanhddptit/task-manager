@@ -56,15 +56,70 @@ def _add_audit_columns(connection):
         )
 
 
+def _enforce_single_workspace_owner(connection):
+    duplicate = connection.execute("""
+        SELECT workspace_id
+        FROM workspace_member
+        WHERE role = 'owner'
+        GROUP BY workspace_id
+        HAVING COUNT(*) > 1
+        LIMIT 1
+    """).fetchone()
+    if duplicate is not None:
+        raise RuntimeError(
+            "Cannot enforce single Workspace Owner: "
+            f"workspace {duplicate['workspace_id']} has multiple Workspace Owners."
+        )
+    connection.execute("""
+        CREATE UNIQUE INDEX uq_workspace_single_owner
+        ON workspace_member (workspace_id)
+        WHERE role = 'owner'
+    """)
+
+
+def _remove_project_owner_role(connection):
+    connection.execute("""
+        CREATE TABLE project_member_new (
+            project_id INTEGER NOT NULL,
+            workspace_id INTEGER NOT NULL,
+            user_id INTEGER NOT NULL,
+            role TEXT NOT NULL DEFAULT 'member'
+                CHECK (role IN ('admin', 'member')),
+            joined_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            PRIMARY KEY (project_id, user_id),
+            FOREIGN KEY (project_id, workspace_id)
+                REFERENCES project (id, workspace_id) ON DELETE CASCADE,
+            FOREIGN KEY (workspace_id, user_id)
+                REFERENCES workspace_member (workspace_id, user_id)
+                ON DELETE CASCADE
+        )
+    """)
+    connection.execute("""
+        INSERT INTO project_member_new
+            (project_id, workspace_id, user_id, role, joined_at)
+        SELECT project_id, workspace_id, user_id,
+               CASE role WHEN 'owner' THEN 'admin' ELSE role END,
+               joined_at
+        FROM project_member
+    """)
+    connection.execute("DROP TABLE project_member")
+    connection.execute(
+        "ALTER TABLE project_member_new RENAME TO project_member"
+    )
+
+
 MIGRATIONS = {
     1: _add_workspace_project_creators,
     2: _add_audit_columns,
+    3: _enforce_single_workspace_owner,
+    4: _remove_project_owner_role,
 }
 
 
 def apply_migrations(connection):
-    connection.execute("BEGIN IMMEDIATE")
+    connection.execute("PRAGMA foreign_keys = OFF")
     try:
+        connection.execute("BEGIN IMMEDIATE")
         connection.execute("""
             CREATE TABLE IF NOT EXISTS schema_migration (
                 version INTEGER PRIMARY KEY,
@@ -82,7 +137,17 @@ def apply_migrations(connection):
                     "INSERT INTO schema_migration (version) VALUES (?)",
                     (version,),
                 )
+        foreign_key_errors = connection.execute(
+            "PRAGMA foreign_key_check"
+        ).fetchall()
+        if foreign_key_errors:
+            raise RuntimeError(
+                "Database foreign-key check failed after migrations: "
+                f"{[tuple(row) for row in foreign_key_errors]}"
+            )
         connection.commit()
     except Exception:
         connection.rollback()
         raise
+    finally:
+        connection.execute("PRAGMA foreign_keys = ON")
