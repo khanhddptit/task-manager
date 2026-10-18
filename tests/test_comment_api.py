@@ -709,3 +709,36 @@ def test_project_admin_strictly_requires_admin_role(client, seeded_env, app):
     assert del_res2.status_code == 403
     assert del_res2.json["error"]["code"] == "forbidden"
 
+
+def test_write_transaction_is_active_during_permission_check(app, seeded_env):
+    from unittest.mock import patch
+    import app.services.comment_service as cs
+    from app.db import get_db
+
+    ws_id = seeded_env["workspace_id"]
+    p_id = seeded_env["project_id"]
+    t_id = seeded_env["task_id"]
+    u_id = seeded_env["member_id"]
+
+    original_ensure_access = cs._ensure_project_access
+    in_tx_flags = []
+
+    def wrapped_ensure_access(*args, **kwargs):
+        in_tx_flags.append(get_db().in_transaction)
+        return original_ensure_access(*args, **kwargs)
+
+    with app.app_context():
+        with patch("app.services.comment_service._ensure_project_access", side_effect=wrapped_ensure_access):
+            # 1. create_comment mở transaction ngay từ bước kiểm tra quyền
+            comment = cs.create_comment(ws_id, p_id, t_id, {"content": "tx test"}, u_id)
+            assert in_tx_flags[-1] is True
+
+            # 2. update_comment_content mở transaction ngay từ bước kiểm tra quyền
+            cs.update_comment_content(ws_id, p_id, t_id, comment["id"], {"content": "tx test edited"}, u_id)
+            assert in_tx_flags[-1] is True
+
+            # 3. delete_comment_by_id mở transaction ngay từ bước kiểm tra quyền
+            cs.delete_comment_by_id(ws_id, p_id, t_id, comment["id"], u_id)
+            assert in_tx_flags[-1] is True
+
+

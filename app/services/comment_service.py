@@ -1,5 +1,5 @@
 from app.auth.validation import ValidationError
-from app.db import get_db
+from app.db import write_transaction
 from app.models.comment import (
     check_task_hierarchy,
     delete_comment,
@@ -84,8 +84,7 @@ def create_comment(workspace_id, project_id, task_id, data, user_id):
     Kiểm tra quyền và ghi dữ liệu trong cùng một transaction.
     """
     content = validate_comment_payload(data)
-    db = get_db()
-    with db:
+    with write_transaction():
         _ensure_task_exists(workspace_id, project_id, task_id)
         _ensure_project_access(user_id, workspace_id, project_id)
         comment_id = insert_comment(task_id, user_id, content)
@@ -102,8 +101,7 @@ def update_comment_content(workspace_id, project_id, task_id, comment_id, data, 
     Kiểm tra quyền và ghi dữ liệu trong cùng một transaction.
     """
     content = validate_comment_payload(data)
-    db = get_db()
-    with db:
+    with write_transaction():
         _ensure_task_exists(workspace_id, project_id, task_id)
         comment = get_comment_by_id(comment_id)
         if (
@@ -134,8 +132,7 @@ def delete_comment_by_id(workspace_id, project_id, task_id, comment_id, user_id)
        - HOẶC Workspace Owner của workspace đó.
     Kiểm tra quyền và xóa dữ liệu trong cùng một transaction.
     """
-    db = get_db()
-    with db:
+    with write_transaction():
         _ensure_task_exists(workspace_id, project_id, task_id)
         comment = get_comment_by_id(comment_id)
         if (
