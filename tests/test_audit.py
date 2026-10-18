@@ -105,6 +105,13 @@ def test_legacy_migration_preserves_data_and_can_run_repeatedly(app, tmp_path):
             created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
             updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
         );
+        CREATE TABLE workspace_member (
+            workspace_id INTEGER NOT NULL,
+            user_id INTEGER NOT NULL,
+            role TEXT NOT NULL DEFAULT 'member',
+            joined_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            PRIMARY KEY (workspace_id, user_id)
+        );
         CREATE TABLE project (
             id INTEGER PRIMARY KEY,
             workspace_id INTEGER NOT NULL,
@@ -118,6 +125,8 @@ def test_legacy_migration_preserves_data_and_can_run_repeatedly(app, tmp_path):
         INSERT INTO user (id, username, password_hash)
             VALUES (10, 'legacy', 'placeholder');
         INSERT INTO workspace (id, name) VALUES (20, 'Legacy workspace');
+        INSERT INTO workspace_member (workspace_id, user_id, role)
+            VALUES (20, 10, 'owner');
         INSERT INTO project (id, workspace_id, name)
             VALUES (30, 20, 'Legacy project');
     """)
@@ -166,7 +175,7 @@ def test_legacy_migration_preserves_data_and_can_run_repeatedly(app, tmp_path):
         "name": "Legacy project",
         "created_by": None,
     }
-    assert migration["MAX(version)"] == 3
+    assert migration["MAX(version)"] == 6
     assert UTC_TIMESTAMP_FORMAT.fullmatch(new_user_updated_at)
     assert "updated_at" in columns["user"]
     assert all("updated_by" in columns[table] for table in columns if table != "user")

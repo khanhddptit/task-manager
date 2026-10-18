@@ -87,10 +87,96 @@ def _add_audit_columns(connection):
         )
 
 
+def _enforce_single_workspace_owner(connection):
+    _require_workspace_owners(connection)
+
+    duplicate = connection.execute("""
+        SELECT workspace_id
+        FROM workspace_member
+        WHERE role = 'owner'
+        GROUP BY workspace_id
+        HAVING COUNT(*) > 1
+        LIMIT 1
+    """).fetchone()
+    if duplicate is not None:
+        raise RuntimeError(
+            "Cannot enforce single Workspace Owner: "
+            f"workspace {duplicate['workspace_id']} has multiple Workspace Owners."
+        )
+    connection.execute("""
+        CREATE UNIQUE INDEX IF NOT EXISTS uq_workspace_single_owner
+        ON workspace_member (workspace_id)
+        WHERE role = 'owner'
+    """)
+
+
+def _require_workspace_owners(connection):
+    ownerless = connection.execute("""
+        SELECT w.id AS workspace_id
+        FROM workspace AS w
+        LEFT JOIN workspace_member AS wm
+          ON wm.workspace_id = w.id AND wm.role = 'owner'
+        GROUP BY w.id
+        HAVING COUNT(wm.user_id) = 0
+        LIMIT 1
+    """).fetchone()
+    if ownerless is not None:
+        raise RuntimeError(
+            "Cannot enforce Workspace Owner: "
+            f"workspace {ownerless['workspace_id']} has no Workspace Owner."
+        )
+
+
+def _remove_project_owner_role(connection):
+    connection.execute("""
+        CREATE TABLE project_member_new (
+            project_id INTEGER NOT NULL,
+            workspace_id INTEGER NOT NULL,
+            user_id INTEGER NOT NULL,
+            role TEXT NOT NULL DEFAULT 'member'
+                CHECK (role IN ('admin', 'member')),
+            joined_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            PRIMARY KEY (project_id, user_id),
+            FOREIGN KEY (project_id, workspace_id)
+                REFERENCES project (id, workspace_id) ON DELETE CASCADE,
+            FOREIGN KEY (workspace_id, user_id)
+                REFERENCES workspace_member (workspace_id, user_id)
+                ON DELETE CASCADE
+        )
+    """)
+    connection.execute("""
+        INSERT INTO project_member_new
+            (project_id, workspace_id, user_id, role, joined_at)
+        SELECT project_id, workspace_id, user_id,
+               CASE role WHEN 'owner' THEN 'admin' ELSE role END,
+               joined_at
+        FROM project_member
+    """)
+    connection.execute("DROP TABLE project_member")
+    connection.execute(
+        "ALTER TABLE project_member_new RENAME TO project_member"
+    )
+
+
+def _ensure_project_member_roles(connection):
+    definition = connection.execute("""
+        SELECT sql FROM sqlite_master
+        WHERE type = 'table' AND name = 'project_member'
+    """).fetchone()["sql"]
+    has_legacy_owner_role = connection.execute(
+        "SELECT 1 FROM project_member WHERE role = 'owner' LIMIT 1"
+    ).fetchone()
+    if "owner" in definition.lower() or has_legacy_owner_role is not None:
+        _remove_project_owner_role(connection)
+
+
 MIGRATIONS = {
     1: _add_workspace_project_creators,
     2: _add_audit_columns,
     3: _migrate_project_member_roles,
+    4: _enforce_single_workspace_owner,
+    5: _require_workspace_owners,
+    6: _ensure_project_member_roles,
 }
 
 

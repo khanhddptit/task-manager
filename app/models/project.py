@@ -37,6 +37,28 @@ def get_project_for_user(workspace_id, project_id, user_id):
     ).fetchone()
 
 
+def get_effective_project_role(project_id, user_id):
+    return get_db().execute(
+        """SELECT CASE WHEN wm.role = 'owner' THEN 'admin' ELSE pm.role END AS role
+           FROM project AS p
+           JOIN workspace_member AS wm
+             ON wm.workspace_id = p.workspace_id AND wm.user_id = ?
+           LEFT JOIN project_member AS pm
+             ON pm.project_id = p.id AND pm.workspace_id = p.workspace_id
+            AND pm.user_id = wm.user_id
+           WHERE p.id = ?
+             AND (wm.role = 'owner' OR pm.user_id IS NOT NULL)""",
+        (user_id, project_id),
+    ).fetchone()
+
+
+def get_project_workspace_id(project_id):
+    row = get_db().execute(
+        "SELECT workspace_id FROM project WHERE id = ?", (project_id,)
+    ).fetchone()
+    return row["workspace_id"] if row is not None else None
+
+
 def get_projects_for_user(workspace_id, user_id):
     return get_db().execute(
         """SELECT p.id, p.workspace_id, p.name, p.description,

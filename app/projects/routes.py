@@ -36,7 +36,10 @@ def validate_project_payload(data, partial=False):
     errors = {}
     unknown_fields = set(data) - PROJECT_FIELDS
     if unknown_fields:
-        errors.update({field: "Trường này không được hỗ trợ." for field in unknown_fields})
+        errors.update({
+            field: "Trường này không được hỗ trợ."
+            for field in unknown_fields
+        })
     if not partial and "name" not in data:
         errors["name"] = "Tên Project là bắt buộc."
     if partial and not (set(data) & PROJECT_FIELDS):
@@ -131,7 +134,10 @@ def members(workspace_id, project_id):
 def add_member(workspace_id, project_id):
     data = read_json_object()
     unknown_fields = set(data) - {"user_id", "role"}
-    errors = {field: "Trường này không được hỗ trợ." for field in unknown_fields}
+    errors = {
+        field: "Trường này không được hỗ trợ."
+        for field in unknown_fields
+    }
     if "user_id" not in data:
         errors["user_id"] = "Vui lòng cung cấp ID người dùng."
     role = data.get("role", "member")

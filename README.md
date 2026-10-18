@@ -10,7 +10,7 @@ Bộ khung dùng chung cho team phát triển ứng dụng quản lý công vi�
 - Schema gồm 7 bảng nghiệp vụ (`user`, `workspace`, `workspace_member`, `project`, `project_member`, `task`, `comment`) và bảng `schema_migration` theo dõi migration; lệnh `init-db` áp dụng migration và tạo index, không xóa dữ liệu hiện có.
 - Cấu hình Session, biến môi trường và bộ kiểm thử pytest.
 
-Đã có đăng ký/đăng nhập, Workspace API và Project CRUD API. **Chưa triển khai:** Task CRUD và giao diện quản lý Project/Task; trang công việc hiện vẫn là placeholder.
+**Chưa triển khai:** đăng ký/đăng nhập, phân quyền, CRUD, tìm kiếm/lọc công việc. Trang công việc chỉ là placeholder, không đọc dữ liệu thật. Các package `models` và `services` là vị trí để team bổ sung code, chưa có nghiệp vụ.
 
 ## 2. Tech stack
 
@@ -38,21 +38,16 @@ task-manager/
 │   ├── schema.sql           # Định nghĩa bảng
 │   ├── migrations.py        # Migration schema có version
 │   ├── indexes.sql          # Index tạo sau khi áp dụng migration
-│   ├── auth/                 # Đăng ký, đăng nhập, session và validation
 │   ├── main/
 │   │   ├── __init__.py
 │   │   └── routes.py        # Trang chủ
-│   ├── workspaces/           # API Workspace
-│   ├── projects/             # CRUD Project và quản lý Project Member
 │   ├── tasks/
 │   │   ├── __init__.py
 │   │   └── routes.py        # Trang mẫu module công việc
 │   ├── models/
-│   │   ├── project.py       # Truy vấn Project/Project Member
-│   │   └── __init__.py
+│   │   └── __init__.py      # Nơi bổ sung truy vấn SQL (không phải ORM)
 │   ├── services/
-│   │   ├── project_service.py # Logic CRUD và RBAC Project
-│   │   └── __init__.py
+│   │   └── __init__.py      # Nơi bổ sung logic nghiệp vụ
 │   ├── templates/
 │   │   ├── base.html
 │   │   ├── main/index.html
@@ -145,34 +140,19 @@ erDiagram
 ```
 
 - Một workspace có nhiều project; một project có nhiều task; một task có nhiều comment.
-- Workspace có role `owner`, `admin`, `member`; Project chỉ có role `admin`, `member`. Workspace Owner có quyền quản trị ngầm trên mọi Project; Project Admin chỉ có quyền trong Project được gán. Workspace Admin không tự có quyền Project.
-- Khóa ngoại ghép bảo đảm project member phải thuộc **đúng workspace của project**, kể cả khi cập nhật; không cho phép membership trùng. Migration phiên bản 3 đổi Project Owner cũ thành Project Admin và giữ nguyên task assignment.
+- Member có role `owner`, `admin`, `member` ở từng cấp, mặc định `member`. Role workspace và project độc lập; schema chưa định nghĩa kế thừa quyền.
+- Khóa ngoại ghép bảo đảm project member phải thuộc **đúng workspace của project**, kể cả khi cập nhật; không cho phép membership trùng.
 - Task có thể chưa được giao (`assignee_id = NULL`) hoặc được giao cho đúng một project member. Chuyển project khi còn người được giao không thuộc project mới sẽ bị từ chối.
 - Các trường audit (`created_by`, `updated_by`, `author_id`) tham chiếu user và có thể NULL để giữ lịch sử khi user bị xóa. Khi tạo/sửa, service phải lấy người thao tác từ session và kiểm tra quyền, không tin ID gửi từ client.
 - Trạng thái công việc: `todo`, `in_progress`, `done`; tên workspace/project, username, tiêu đề và nội dung comment không được rỗng hoặc chỉ gồm dấu cách.
 - Xóa workspace → project/member → task → comment theo `ON DELETE CASCADE`; xóa project hoặc task cũng xóa dữ liệu con tương ứng.
-- Không gỡ Project Member đang được assign task; API trả `409` để yêu cầu bỏ giao hoặc giao lại task trước. Xóa Project sẽ cascade task/comment. Xóa user đặt các tham chiếu audit như `created_by`/`author_id` về NULL và giữ nội dung lịch sử.
+- Không xóa member/user đang được giao task: phải bỏ giao hoặc giao lại các task trước trong cùng transaction. Xóa membership không xóa nội dung task/comment. Sau khi bỏ giao, xóa user sẽ xóa membership, đặt `created_by`/`author_id` về NULL và giữ nội dung.
 - Quy tắc bắt buộc có owner, chuyển quyền owner, quyền đọc/ghi/xóa theo role và quyền bình luận phải được service triển khai; schema chỉ kiểm tra giá trị role, không giới hạn số owner.
 - Index hỗ trợ tra cứu membership theo user, project theo workspace, task theo project/trạng thái/người được giao và comment theo task/thời gian.
 - Quy ước `due_date` là `YYYY-MM-DD`; schema chưa kiểm tra định dạng nên service phải validate. Timestamp mặc định dùng UTC; khi sửa task, code cập nhật phải gán `updated_at = CURRENT_TIMESTAMP`.
 - Dùng `get_db()` trong application/request context. Câu lệnh ghi phải `commit()`; khi lỗi cần `rollback()` hoặc dùng transaction context của connection.
 - Luôn dùng SQL parameter `?`, không nối chuỗi/f-string với dữ liệu người dùng.
 - `init-db` tạo bảng/index còn thiếu và áp dụng các migration phiên bản cho schema hiện tại (bao gồm các cột audit). Lệnh này không chuyển dữ liệu từ mô hình cũ `users/tasks`; database dạng cũ vẫn cần migration riêng để chuyển dữ liệu. Không thêm lệnh xóa dữ liệu vào quá trình khởi động.
-
-### Project API
-
-Tất cả endpoint Project nằm dưới `/workspaces/{workspace_id}/projects`, yêu cầu đăng nhập và dùng CSRF token cho request ghi.
-
-| Method | Endpoint | Quyền chính |
-| --- | --- | --- |
-| `GET`, `POST` | `/workspaces/{workspace_id}/projects` | Thành viên Workspace xem/tạo; người tạo trở thành Project Admin |
-| `GET`, `PATCH`, `DELETE` | `/workspaces/{workspace_id}/projects/{project_id}` | Project Admin hoặc Workspace Owner |
-| `GET`, `POST` | `/workspaces/{workspace_id}/projects/{project_id}/members` | Project Admin hoặc Workspace Owner |
-| `PATCH`, `DELETE` | `/workspaces/{workspace_id}/projects/{project_id}/members/{user_id}` | Project Admin trong phạm vi role cho phép; Workspace Owner quản lý mọi member |
-
-Project chỉ có role `admin` và `member`. Project Admin có thể thêm Member và nâng Member hiện có thành Admin trong Project đó; chỉ Workspace Owner được gán Admin trực tiếp khi thêm. Workspace Owner có quyền ngầm với mọi Project mà không cần dòng `project_member`. Không thể gỡ Project Member đang được assign task; API trả `409` để yêu cầu bỏ giao hoặc giao lại task trước.
-
-Request thành công trả JSON wrapper như `{"project": {...}}`, `{"projects": [...]}` hoặc `{"members": [...]}`. Lỗi dùng cấu trúc `{"error": {"code": ..., "message": ...}}`.
 
 ### Session
 

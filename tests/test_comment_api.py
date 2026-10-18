@@ -740,5 +740,3 @@ def test_write_transaction_is_active_during_permission_check(app, seeded_env):
             # 3. delete_comment_by_id mở transaction ngay từ bước kiểm tra quyền
             cs.delete_comment_by_id(ws_id, p_id, t_id, comment["id"], u_id)
             assert in_tx_flags[-1] is True
-
-

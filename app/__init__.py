@@ -41,10 +41,10 @@ def create_app(test_config=None):
     app.register_blueprint(auth_bp)
     CSRFProtect(app)
     app.register_blueprint(main_bp)
+    app.register_blueprint(projects_bp)
     app.register_blueprint(tasks_bp)
     app.register_blueprint(workspaces_bp)
     app.register_blueprint(comments_bp)
-    app.register_blueprint(projects_bp)
 
     def is_api_request():
         return any(

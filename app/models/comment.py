@@ -59,7 +59,7 @@ def list_comments_by_task(task_id):
     db = get_db()
     return db.execute(
         """
-        SELECT 
+        SELECT
             c.id,
             c.task_id,
             c.author_id,
@@ -84,7 +84,7 @@ def get_comment_by_id(comment_id):
     db = get_db()
     return db.execute(
         """
-        SELECT 
+        SELECT
             c.id,
             c.task_id,
             c.author_id,

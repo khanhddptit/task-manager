@@ -1,5 +1,3 @@
-import sqlite3
-
 from app.db import write_transaction
 from app.models.project import (
     delete_project as delete_project_record,
@@ -42,7 +40,9 @@ def _require_workspace_member(workspace_id, user_id):
 def _get_project_access(workspace_id, project_id, user_id):
     project = get_project(workspace_id, project_id)
     if project is None:
-        raise ProjectServiceError("project_not_found", "Không tìm thấy Project.", 404)
+        raise ProjectServiceError(
+            "project_not_found", "Không tìm thấy Project.", 404
+        )
 
     workspace_role = get_workspace_member_role(workspace_id, user_id)
     if workspace_role is None:
@@ -64,17 +64,20 @@ def _get_project_access(workspace_id, project_id, user_id):
 def _require_project_admin(role):
     if role != "admin":
         raise ProjectServiceError(
-            "permission_denied", "Chỉ Project Admin mới được thực hiện thao tác này.", 403
+            "permission_denied",
+            "Chỉ Project Admin mới được thực hiện thao tác này.",
+            403,
         )
 
 
 def create_project(workspace_id, user_id, name, description):
     with write_transaction():
-        _require_workspace_member(workspace_id, user_id)
+        workspace_role = _require_workspace_member(workspace_id, user_id)
         project_id = insert_project(
             workspace_id, name.strip(), description.strip(), user_id
         )
-        insert_project_member(project_id, workspace_id, user_id, "admin")
+        if workspace_role != "owner":
+            insert_project_member(project_id, workspace_id, user_id, "admin")
         return get_project_for_user(workspace_id, project_id, user_id)
 
 
@@ -84,7 +87,7 @@ def list_projects(workspace_id, user_id):
 
 
 def get_project_details(workspace_id, project_id, user_id):
-    project, _, _ = _get_project_access(workspace_id, project_id, user_id)
+    _get_project_access(workspace_id, project_id, user_id)
     return get_project_for_user(workspace_id, project_id, user_id)
 
 
@@ -101,10 +104,7 @@ def update_project(workspace_id, project_id, user_id, values):
 def delete_project(workspace_id, project_id, user_id):
     with write_transaction():
         _, role, _ = _get_project_access(workspace_id, project_id, user_id)
-        if role != "admin":
-            raise ProjectServiceError(
-                "permission_denied", "Chỉ Project Admin mới được xóa Project.", 403
-            )
+        _require_project_admin(role)
         delete_project_record(workspace_id, project_id)
 
 
@@ -123,7 +123,7 @@ def add_project_member(workspace_id, project_id, actor_id, target_user_id, role)
         if role == "admin" and not is_workspace_owner:
             raise ProjectServiceError(
                 "permission_denied",
-                "Project Admin cần thêm Member trước khi nâng role trong Project.",
+                "Project Admin phải thêm Member trước khi nâng role.",
                 403,
             )
 
@@ -140,16 +140,7 @@ def add_project_member(workspace_id, project_id, actor_id, target_user_id, role)
                 409,
             )
 
-        try:
-            insert_project_member(project["id"], workspace_id, target_user_id, role)
-        except sqlite3.IntegrityError as error:
-            if get_project_member_role(project_id, target_user_id) is not None:
-                raise ProjectServiceError(
-                    "member_already_exists",
-                    "Người dùng đã là thành viên của Project.",
-                    409,
-                ) from error
-            raise
+        insert_project_member(project["id"], workspace_id, target_user_id, role)
         return get_project_members(project_id)
 
 
@@ -192,23 +183,34 @@ def remove_project_member(workspace_id, project_id, actor_id, target_user_id):
         _, actor_role, is_workspace_owner = _get_project_access(
             workspace_id, project_id, actor_id
         )
+        is_self_removal = actor_id == target_user_id
+        if not is_self_removal:
+            _require_project_admin(actor_role)
+
         target_role = get_project_member_role(project_id, target_user_id)
         if target_role is None:
+            if (
+                not is_workspace_owner
+                and get_workspace_member_role(workspace_id, target_user_id)
+                == "owner"
+            ):
+                raise ProjectServiceError(
+                    "permission_denied",
+                    "Project Admin không thể gỡ Workspace Owner.",
+                    403,
+                )
             raise ProjectServiceError(
                 "project_member_not_found",
                 "Không tìm thấy thành viên trong Project.",
                 404,
             )
 
-        is_self_removal = actor_id == target_user_id
-        if not is_self_removal:
-            _require_project_admin(actor_role)
-            if not is_workspace_owner and target_role != "member":
-                raise ProjectServiceError(
-                    "permission_denied",
-                    "Project Admin chỉ được gỡ Member khác.",
-                    403,
-                )
+        if not is_self_removal and not is_workspace_owner and target_role != "member":
+            raise ProjectServiceError(
+                "permission_denied",
+                "Project Admin chỉ được gỡ Member khác.",
+                403,
+            )
 
         if member_has_assigned_tasks(project_id, target_user_id):
             raise ProjectServiceError(
