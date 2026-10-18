@@ -7,10 +7,15 @@ from app.auth.decorators import login_required
 from app.auth.responses import api_error
 from app.auth.validation import ValidationError
 from app.services.task_service import (
-    TaskServiceError,
+    InsufficientRoleError,
+    InvalidAssigneeError,
+    InvalidTaskDataError,
+    NotAProjectMemberError,
+    ProjectNotFoundError,
+    TaskNotFoundError,
     create_task,
     delete_task,
-    get_task_details,
+    get_task,
     list_tasks,
     update_task,
 )
@@ -49,6 +54,8 @@ def validate_task_payload(data, partial=False):
         title = data["title"]
         if not isinstance(title, str) or not title.strip():
             errors["title"] = "Tiêu đề task phải là chuỗi không được để trống."
+        elif len(title.strip()) > 255:
+            errors["title"] = "Tiêu đề task không được vượt quá 255 ký tự."
         else:
             values["title"] = title.strip()
 
@@ -139,9 +146,34 @@ def validation_error(error):
     return api_error("validation_error", str(error), 400, error.fields)
 
 
-@bp.errorhandler(TaskServiceError)
-def task_service_error(error):
-    return jsonify(error=error.as_dict()), error.status
+@bp.errorhandler(ProjectNotFoundError)
+def project_not_found(error):
+    return api_error("project_not_found", str(error), 404)
+
+
+@bp.errorhandler(TaskNotFoundError)
+def task_not_found(error):
+    return api_error("task_not_found", str(error), 404)
+
+
+@bp.errorhandler(NotAProjectMemberError)
+def not_project_member(error):
+    return api_error("permission_denied", str(error), 403)
+
+
+@bp.errorhandler(InsufficientRoleError)
+def insufficient_role(error):
+    return api_error("permission_denied", str(error), 403)
+
+
+@bp.errorhandler(InvalidTaskDataError)
+def invalid_task_data(error):
+    return api_error("validation_error", str(error), 400)
+
+
+@bp.errorhandler(InvalidAssigneeError)
+def invalid_assignee(error):
+    return api_error("invalid_assignee", str(error), 422)
 
 
 @bp.get("")
@@ -158,16 +190,23 @@ def index(workspace_id, project_id):
 @login_required
 def create(workspace_id, project_id):
     values = validate_task_payload(read_json_object())
-    task = create_task(workspace_id, project_id, g.user["id"], values)
+    task = create_task(
+        workspace_id,
+        project_id,
+        g.user["id"],
+        values["title"],
+        description=values.get("description", ""),
+        assignee_id=values.get("assignee_id"),
+        status=values.get("status", "todo"),
+        due_date=values.get("due_date"),
+    )
     return jsonify(task=dict(task)), 201
 
 
 @bp.get("/<int:task_id>")
 @login_required
 def detail(workspace_id, project_id, task_id):
-    task = get_task_details(
-        workspace_id, project_id, task_id, g.user["id"]
-    )
+    task = get_task(workspace_id, project_id, g.user["id"], task_id)
     return jsonify(task=dict(task)), 200
 
 
@@ -176,7 +215,7 @@ def detail(workspace_id, project_id, task_id):
 def update(workspace_id, project_id, task_id):
     values = validate_task_payload(read_json_object(), partial=True)
     task = update_task(
-        workspace_id, project_id, task_id, g.user["id"], values
+        workspace_id, project_id, g.user["id"], task_id, **values
     )
     return jsonify(task=dict(task)), 200
 
@@ -184,5 +223,5 @@ def update(workspace_id, project_id, task_id):
 @bp.delete("/<int:task_id>")
 @login_required
 def delete(workspace_id, project_id, task_id):
-    delete_task(workspace_id, project_id, task_id, g.user["id"])
+    delete_task(workspace_id, project_id, g.user["id"], task_id)
     return jsonify(message="Task đã được xóa."), 200
