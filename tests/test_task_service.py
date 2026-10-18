@@ -314,12 +314,16 @@ def test_legacy_project_owner_role_is_not_an_effective_task_role(app):
     ids = make_project(app)
     with app.app_context():
         db = get_db()
-        db.execute(
-            """UPDATE project_member SET role = 'owner'
-               WHERE project_id = ? AND user_id = ?""",
-            (ids["project_id"], ids["admin_id"]),
-        )
-        db.commit()
+        db.execute("PRAGMA ignore_check_constraints = ON")
+        try:
+            db.execute(
+                """UPDATE project_member SET role = 'owner'
+                   WHERE project_id = ? AND user_id = ?""",
+                (ids["project_id"], ids["admin_id"]),
+            )
+            db.commit()
+        finally:
+            db.execute("PRAGMA ignore_check_constraints = OFF")
 
         assert get_effective_project_role(
             ids["workspace_id"], ids["project_id"], ids["admin_id"]

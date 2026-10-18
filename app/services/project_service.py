@@ -1,249 +1,223 @@
-import sqlite3
-
-from app.db import get_db
+from app.db import write_transaction
 from app.models.project import (
-    count_project_owners,
-    delete_project,
+    delete_project as delete_project_record,
     delete_project_member,
-    get_project_by_id,
-    get_project_for_member,
+    get_project,
+    get_project_for_user,
     get_project_member,
+    get_project_member_role,
     get_project_members,
-    get_projects_for_workspace_member,
+    get_projects_for_user,
+    get_workspace_member_role,
     insert_project,
     insert_project_member,
-    update_project,
+    member_has_assigned_tasks,
+    update_project as update_project_record,
     update_project_member_role,
 )
-from app.models.workspace import get_workspace_for_member
 
 
-class ProjectNotFoundError(LookupError):
-    pass
+class ProjectServiceError(Exception):
+    def __init__(self, code, message, status, details=None):
+        super().__init__(message)
+        self.code = code
+        self.status = status
+        self.details = details or {}
 
-
-class NotAWorkspaceMemberError(PermissionError):
-    pass
-
-
-class NotAProjectMemberError(PermissionError):
-    pass
-
-
-class InsufficientRoleError(PermissionError):
-    pass
-
-
-class AlreadyAMemberError(ValueError):
-    pass
-
-
-class CannotRemoveLastOwnerError(ValueError):
-    pass
-
-
-class TargetNotAWorkspaceMemberError(ValueError):
-    pass
-
-
-class MemberHasAssignedTasksError(ValueError):
-    pass
-
-
-# Thứ tự role: owner > admin > member
-_ROLE_RANK = {"owner": 3, "admin": 2, "member": 1}
-
-VALID_ROLES = frozenset(_ROLE_RANK)
+    def as_dict(self):
+        return {"code": self.code, "message": str(self), **self.details}
 
 
 def _require_workspace_member(workspace_id, user_id):
-    """Trả về bản ghi workspace_member hoặc raise nếu không phải thành viên."""
-    row = get_workspace_for_member(workspace_id, user_id)
-    if row is None:
-        raise NotAWorkspaceMemberError("Bạn không có quyền truy cập workspace này.")
-    return row
+    role = get_workspace_member_role(workspace_id, user_id)
+    if role is None:
+        raise ProjectServiceError(
+            "workspace_not_found", "Không tìm thấy Workspace.", 404
+        )
+    return role
 
 
-def _require_project_member(project_id, user_id, workspace_id=None):
-    """Trả về bản ghi project_member hoặc raise nếu không phải thành viên."""
-    if workspace_id is not None:
-        _require_workspace_member(workspace_id, user_id)
-    row = get_project_for_member(project_id, user_id)
-    if row is None:
-        raise NotAProjectMemberError("Bạn không có quyền truy cập project này.")
-    if workspace_id is not None and row["workspace_id"] != workspace_id:
-        raise NotAProjectMemberError("Bạn không có quyền truy cập project này trong workspace này.")
-    return row
+def _get_project_access(workspace_id, project_id, user_id):
+    project = get_project(workspace_id, project_id)
+    if project is None:
+        raise ProjectServiceError(
+            "project_not_found", "Không tìm thấy Project.", 404
+        )
+
+    workspace_role = get_workspace_member_role(workspace_id, user_id)
+    if workspace_role is None:
+        raise ProjectServiceError(
+            "permission_denied", "Bạn không có quyền truy cập Project này.", 403
+        )
+
+    if workspace_role == "owner":
+        return project, "admin", True
+
+    project_role = get_project_member_role(project_id, user_id)
+    if project_role is None:
+        raise ProjectServiceError(
+            "permission_denied", "Bạn không có quyền truy cập Project này.", 403
+        )
+    return project, project_role, False
 
 
-def _require_role(member_row, minimum_role):
-    """Raise InsufficientRoleError nếu role của member thấp hơn mức yêu cầu."""
-    if _ROLE_RANK.get(member_row["role"], 0) < _ROLE_RANK[minimum_role]:
-        raise InsufficientRoleError(
-            f"Yêu cầu quyền '{minimum_role}' hoặc cao hơn."
+def _require_project_admin(role):
+    if role != "admin":
+        raise ProjectServiceError(
+            "permission_denied",
+            "Chỉ Project Admin mới được thực hiện thao tác này.",
+            403,
         )
 
 
-# ---------------------------------------------------------------------------
-# Project CRUD
-# ---------------------------------------------------------------------------
-
-def create_project(workspace_id, name, description, creator_id):
-    """Tạo project trong workspace; thêm người tạo làm owner."""
-    _require_workspace_member(workspace_id, creator_id)
-    db = get_db()
-    with db:
+def create_project(workspace_id, user_id, name, description):
+    with write_transaction():
+        workspace_role = _require_workspace_member(workspace_id, user_id)
         project_id = insert_project(
-            workspace_id, name.strip(), description.strip(), creator_id
+            workspace_id, name.strip(), description.strip(), user_id
         )
-        insert_project_member(project_id, workspace_id, creator_id, "owner")
-        return get_project_for_member(project_id, creator_id)
+        if workspace_role != "owner":
+            insert_project_member(project_id, workspace_id, user_id, "admin")
+        return get_project_for_user(workspace_id, project_id, user_id)
 
 
 def list_projects(workspace_id, user_id):
-    """Liệt kê tất cả project trong workspace mà user là thành viên."""
     _require_workspace_member(workspace_id, user_id)
-    return get_projects_for_workspace_member(workspace_id, user_id)
+    return get_projects_for_user(workspace_id, user_id)
 
 
-def get_project(project_id, user_id, workspace_id=None):
-    """Lấy thông tin một project mà user là thành viên."""
-    return _require_project_member(project_id, user_id, workspace_id)
+def get_project_details(workspace_id, project_id, user_id):
+    _get_project_access(workspace_id, project_id, user_id)
+    return get_project_for_user(workspace_id, project_id, user_id)
 
 
-def update_project_info(project_id, name, description, editor_id, workspace_id=None):
-    """Cập nhật tên/mô tả project; yêu cầu role admin hoặc owner. Hỗ trợ partial update."""
-    member = _require_project_member(project_id, editor_id, workspace_id)
-    _require_role(member, "admin")
-
-    current = get_project_by_id(project_id)
-    new_name = name.strip() if name is not None else current["name"]
-    new_desc = description.strip() if description is not None else current["description"]
-
-    db = get_db()
-    with db:
-        update_project(project_id, new_name, new_desc, editor_id)
-        return get_project_for_member(project_id, editor_id)
+def update_project(workspace_id, project_id, user_id, values):
+    with write_transaction():
+        project, role, _ = _get_project_access(workspace_id, project_id, user_id)
+        _require_project_admin(role)
+        name = values.get("name", project["name"])
+        description = values.get("description", project["description"])
+        update_project_record(project_id, name, description, user_id)
+        return get_project_for_user(workspace_id, project_id, user_id)
 
 
-def delete_project_by_id(project_id, deleter_id, workspace_id=None):
-    """Xóa project; yêu cầu role owner."""
-    member = _require_project_member(project_id, deleter_id, workspace_id)
-    _require_role(member, "owner")
-    db = get_db()
-    with db:
-        delete_project(project_id)
+def delete_project(workspace_id, project_id, user_id):
+    with write_transaction():
+        _, role, _ = _get_project_access(workspace_id, project_id, user_id)
+        _require_project_admin(role)
+        delete_project_record(workspace_id, project_id)
 
 
-# ---------------------------------------------------------------------------
-# Project Member management
-# ---------------------------------------------------------------------------
+def list_project_members(workspace_id, project_id, user_id):
+    _get_project_access(workspace_id, project_id, user_id)
+    return get_project_members(project_id)
 
-def add_project_member(project_id, target_user_id, role, requester_id, workspace_id=None):
-    """Thêm thành viên vào project; yêu cầu requester là admin/owner (chỉ owner mới thêm được role owner)."""
-    project = _require_project_member(project_id, requester_id, workspace_id)
-    if role == "owner":
-        _require_role(project, "owner")
-    else:
-        _require_role(project, "admin")
 
-    # Người được thêm phải là thành viên workspace
-    workspace_member = get_workspace_for_member(project["workspace_id"], target_user_id)
-    if workspace_member is None:
-        raise TargetNotAWorkspaceMemberError(
-            "Người dùng này chưa là thành viên của workspace."
+def add_project_member(workspace_id, project_id, actor_id, target_user_id, role):
+    with write_transaction():
+        project, actor_role, is_workspace_owner = _get_project_access(
+            workspace_id, project_id, actor_id
         )
+        _require_project_admin(actor_role)
 
-    existing = get_project_member(project_id, target_user_id)
-    if existing is not None:
-        raise AlreadyAMemberError("Người dùng này đã là thành viên của project.")
-
-    db = get_db()
-    with db:
-        try:
-            insert_project_member(project_id, project["workspace_id"], target_user_id, role)
-        except sqlite3.IntegrityError:
-            raise AlreadyAMemberError("Người dùng này đã là thành viên của project.")
-
-    return get_project_members(project_id)
-
-
-def list_project_members(project_id, requester_id, workspace_id=None):
-    """Liệt kê thành viên project; yêu cầu requester là thành viên."""
-    _require_project_member(project_id, requester_id, workspace_id)
-    return get_project_members(project_id)
-
-
-def change_member_role(project_id, target_user_id, new_role, requester_id, workspace_id=None):
-    """Thay đổi role thành viên; chỉ owner mới đổi được role owner, admin không sửa được role của admin/owner khác."""
-    requester = _require_project_member(project_id, requester_id, workspace_id)
-
-    target = get_project_member(project_id, target_user_id)
-    if target is None:
-        raise NotAProjectMemberError("Người dùng này không phải thành viên của project.")
-
-    # Chỉ owner mới có thể thay đổi role thành hoặc từ 'owner'
-    if target["role"] == "owner" or new_role == "owner":
-        _require_role(requester, "owner")
-    else:
-        _require_role(requester, "admin")
-
-    # Admin không thể thay đổi role của admin khác hoặc owner
-    if target_user_id != requester_id and _ROLE_RANK.get(requester["role"], 0) < _ROLE_RANK["owner"]:
-        if _ROLE_RANK.get(target["role"], 0) >= _ROLE_RANK.get(requester["role"], 0):
-            raise InsufficientRoleError(
-                "Admin không thể thay đổi role của thành viên có role bằng hoặc cao hơn."
+        if role == "admin" and not is_workspace_owner:
+            raise ProjectServiceError(
+                "permission_denied",
+                "Project Admin phải thêm Member trước khi nâng role.",
+                403,
             )
 
-    # Không cho xóa owner cuối cùng khi hạ cấp
-    if target["role"] == "owner" and new_role != "owner":
-        if count_project_owners(project_id) <= 1:
-            raise CannotRemoveLastOwnerError(
-                "Không thể hạ cấp owner duy nhất. Hãy chuyển quyền cho người khác trước."
+        if get_workspace_member_role(workspace_id, target_user_id) is None:
+            raise ProjectServiceError(
+                "target_not_workspace_member",
+                "Người dùng cần là thành viên của Workspace trước.",
+                422,
+            )
+        if get_project_member_role(project_id, target_user_id) is not None:
+            raise ProjectServiceError(
+                "member_already_exists",
+                "Người dùng đã là thành viên của Project.",
+                409,
             )
 
-    db = get_db()
-    with db:
+        insert_project_member(project["id"], workspace_id, target_user_id, role)
+        return get_project_members(project_id)
+
+
+def change_project_member_role(
+    workspace_id, project_id, actor_id, target_user_id, new_role
+):
+    with write_transaction():
+        _, actor_role, is_workspace_owner = _get_project_access(
+            workspace_id, project_id, actor_id
+        )
+        _require_project_admin(actor_role)
+
+        target_role = get_project_member_role(project_id, target_user_id)
+        if target_role is None:
+            raise ProjectServiceError(
+                "project_member_not_found",
+                "Không tìm thấy thành viên trong Project.",
+                404,
+            )
+
+        if not is_workspace_owner and target_role != "member":
+            raise ProjectServiceError(
+                "permission_denied",
+                "Project Admin chỉ được nâng Member thành Admin trong Project.",
+                403,
+            )
+        if not is_workspace_owner and new_role != "admin":
+            raise ProjectServiceError(
+                "permission_denied",
+                "Project Admin chỉ được nâng Member thành Admin trong Project.",
+                403,
+            )
+
         update_project_member_role(project_id, target_user_id, new_role)
+        return get_project_member(project_id, target_user_id)
 
-    return get_project_member(project_id, target_user_id)
 
-
-def remove_project_member(project_id, target_user_id, requester_id, workspace_id=None):
-    """Xóa thành viên khỏi project; owner có thể xóa mọi người, admin xóa member, user có thể tự rời."""
-    requester = _require_project_member(project_id, requester_id, workspace_id)
-
-    target = get_project_member(project_id, target_user_id)
-    if target is None:
-        raise NotAProjectMemberError("Người dùng này không phải thành viên của project.")
-
-    # Tự rời project
-    if target_user_id == requester_id:
-        if target["role"] == "owner" and count_project_owners(project_id) <= 1:
-            raise CannotRemoveLastOwnerError(
-                "Bạn là owner duy nhất. Hãy chuyển quyền trước khi rời project."
-            )
-    else:
-        # Xóa người khác: yêu cầu quyền admin hoặc owner
-        if _ROLE_RANK.get(requester["role"], 0) < _ROLE_RANK["admin"]:
-            raise InsufficientRoleError("Chỉ admin hoặc owner mới có quyền xóa thành viên.")
-        # Admin không thể xóa owner hoặc admin khác
-        if _ROLE_RANK.get(requester["role"], 0) < _ROLE_RANK["owner"]:
-            if _ROLE_RANK.get(target["role"], 0) >= _ROLE_RANK.get(requester["role"], 0):
-                raise InsufficientRoleError(
-                    "Admin không thể xóa thành viên có role bằng hoặc cao hơn."
-                )
-
-    # Kiểm tra task đang được giao
-    assigned = get_db().execute(
-        "SELECT 1 FROM task WHERE project_id = ? AND assignee_id = ? LIMIT 1",
-        (project_id, target_user_id),
-    ).fetchone()
-    if assigned is not None:
-        raise MemberHasAssignedTasksError(
-            "Thành viên này đang được giao task. Hãy bỏ giao hoặc giao lại trước."
+def remove_project_member(workspace_id, project_id, actor_id, target_user_id):
+    with write_transaction():
+        _, actor_role, is_workspace_owner = _get_project_access(
+            workspace_id, project_id, actor_id
         )
+        is_self_removal = actor_id == target_user_id
+        if not is_self_removal:
+            _require_project_admin(actor_role)
 
-    db = get_db()
-    with db:
+        target_role = get_project_member_role(project_id, target_user_id)
+        if target_role is None:
+            if (
+                not is_workspace_owner
+                and get_workspace_member_role(workspace_id, target_user_id)
+                == "owner"
+            ):
+                raise ProjectServiceError(
+                    "permission_denied",
+                    "Project Admin không thể gỡ Workspace Owner.",
+                    403,
+                )
+            raise ProjectServiceError(
+                "project_member_not_found",
+                "Không tìm thấy thành viên trong Project.",
+                404,
+            )
+
+        if not is_self_removal and not is_workspace_owner and target_role != "member":
+            raise ProjectServiceError(
+                "permission_denied",
+                "Project Admin chỉ được gỡ Member khác.",
+                403,
+            )
+
+        if member_has_assigned_tasks(project_id, target_user_id):
+            raise ProjectServiceError(
+                "member_has_assigned_tasks",
+                "Hãy bỏ giao hoặc giao lại task trước khi gỡ thành viên khỏi Project.",
+                409,
+            )
+
         delete_project_member(project_id, target_user_id)
+        return {"removed_user_id": target_user_id}
