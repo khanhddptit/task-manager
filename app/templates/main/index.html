@@ -11,7 +11,7 @@
         <p>Đăng nhập để mở workspace và quản lý dữ liệu thật; bạn cũng có thể xem trước giao diện Kanban.</p>
         <div class="d-flex flex-wrap gap-2">
             <a class="btn btn-primary" href="{{ url_for('main.login') }}">Đăng nhập</a>
-            <a class="btn btn-outline-primary" href="{{ url_for('tasks.index') }}">Xem trước bảng Kanban</a>
+            <a class="btn btn-outline-primary" href="{{ url_for('tasks.index', preview=1) }}">Xem trước bảng Kanban</a>
         </div>
     </div>
 </section>

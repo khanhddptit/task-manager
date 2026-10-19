@@ -6,6 +6,26 @@ const avatarInitials = document.querySelector("#avatar-initials");
 const MAX_AVATAR_BYTES = 2 * 1024 * 1024;
 const ALLOWED_AVATAR_TYPES = new Set(["image/jpeg", "image/png", "image/webp"]);
 
+function applySettingsTheme(theme) {
+    const dark = theme === "dark";
+    document.body.classList.toggle("theme-dark", dark);
+    document.querySelector('meta[name="theme-color"]')?.setAttribute("content", dark ? "#17191c" : "#f6f8fb");
+    const button = document.querySelector("#settings-theme-toggle");
+    if (button) {
+        button.setAttribute("aria-label", dark ? "Chuyển sang giao diện sáng" : "Chuyển sang giao diện tối");
+        button.innerHTML = `<i class="bi ${dark ? "bi-sun" : "bi-moon"}" aria-hidden="true"></i>`;
+    }
+}
+
+let savedTheme = "dark";
+try { savedTheme = window.localStorage.getItem("kairo-kanban-theme") || "dark"; } catch (_) { /* Use the shared default. */ }
+applySettingsTheme(savedTheme);
+document.querySelector("#settings-theme-toggle")?.addEventListener("click", () => {
+    const theme = document.body.classList.contains("theme-dark") ? "light" : "dark";
+    applySettingsTheme(theme);
+    try { window.localStorage.setItem("kairo-kanban-theme", theme); } catch (_) { /* Keep this page's selection. */ }
+});
+
 function setFeedback(element, message, success = false) {
     element.textContent = message;
     element.classList.toggle("is-success", success);

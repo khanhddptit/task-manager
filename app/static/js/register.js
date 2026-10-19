@@ -35,15 +35,29 @@ registerForm.addEventListener("submit", async (event) => {
     registerButton.disabled = true;
     registerButton.textContent = "Đang tạo tài khoản…";
     try {
-        const response = await fetch("/auth/register", {
-            method: "POST",
-            headers: {
-                "Content-Type": "application/json",
-                "X-CSRFToken": registerForm.elements.csrf_token.value,
-            },
-            body: JSON.stringify(body),
-        });
-        const result = await response.json();
+        let response;
+        try {
+            response = await fetch("/auth/register", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                    "X-CSRFToken": registerForm.elements.csrf_token.value,
+                },
+                body: JSON.stringify(body),
+            });
+        } catch {
+            registerFeedback.textContent = "Không kết nối được máy chủ. Hãy kiểm tra Flask còn chạy trong PowerShell, rồi tải lại trang.";
+            return;
+        }
+
+        let result;
+        try {
+            result = await response.json();
+        } catch {
+            registerFeedback.textContent = `Máy chủ trả về phản hồi không hợp lệ (HTTP ${response.status}). Hãy xem lỗi trong cửa sổ PowerShell.`;
+            return;
+        }
+
         if (!response.ok) {
             const fieldErrors = Object.values(result.error?.fields || {});
             registerFeedback.textContent = fieldErrors.join(" ") || result.error?.message || "Không thể tạo tài khoản.";
@@ -52,8 +66,6 @@ registerForm.addEventListener("submit", async (event) => {
         registerFeedback.textContent = "Tạo tài khoản thành công. Hãy đăng nhập để tiếp tục.";
         registerFeedback.classList.add("is-success");
         registerForm.reset();
-    } catch {
-        registerFeedback.textContent = "Không kết nối được máy chủ. Vui lòng thử lại.";
     } finally {
         registerButton.disabled = false;
         registerButton.innerHTML = 'Tạo tài khoản <i class="bi bi-arrow-right" aria-hidden="true"></i>';

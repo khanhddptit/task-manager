@@ -12,19 +12,21 @@
     <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Manrope:wght@500;600;700;800&display=swap" rel="stylesheet">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/members.css', v=3) }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/kanban.css', v=18) }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/notifications.css', v=2) }}">
 </head>
-<body class="members-page" data-scope="{{ scope }}" data-members-url="{{ members_url }}" data-invitations-url="{{ invitations_url }}" data-invitation-url="{{ invitation_collection_url }}">
+<body class="members-page kanban-page" data-scope="{{ scope }}" data-members-url="{{ members_url }}" data-invitations-url="{{ invitations_url }}" data-invitation-url="{{ invitation_collection_url }}">
+    {% include 'partials/app-sidebar.html' %}
+    <div class="app-shell">
     <header class="members-topbar">
-        <a class="brand" href="{{ url_for('main.index') }}"><span class="brand-icon"><i class="bi bi-layers-fill" aria-hidden="true"></i></span><span><strong>Kairo</strong><small>PROJECT WORKSPACE</small></span></a>
         <div class="topbar-tools">
-            <a class="back-link" href="{{ url_for('main.index') }}"><i class="bi bi-arrow-left" aria-hidden="true"></i> Quay lại</a>
+            <span class="back-link" id="resource-topbar-name">{{ scope_name }} · Thành viên</span>
             <button class="theme-toggle" type="button" aria-label="Chuyển giao diện"><i class="bi bi-moon" aria-hidden="true"></i></button>
             {% include 'partials/notifications.html' %}
         </div>
     </header>
     <main class="members-main" data-workspace-id="{{ workspace_id }}" data-project-id="{{ project_id }}" data-resource-url="{% if scope == 'workspace' %}{{ url_for('workspaces.show', workspace_id=workspace_id) }}{% else %}{{ url_for('projects.detail', workspace_id=workspace_id, project_id=project_id) }}{% endif %}">
-        <nav class="breadcrumbs" aria-label="Đường dẫn"><a href="{{ url_for('main.index') }}">Kairo</a><i class="bi bi-chevron-right" aria-hidden="true"></i><span>{{ scope_name }} {{ workspace_id }}{% if project_id %} / {{ project_id }}{% endif %}</span><i class="bi bi-chevron-right" aria-hidden="true"></i><span class="current">Thành viên</span></nav>
+        <nav class="breadcrumbs" aria-label="Đường dẫn"><a href="{{ url_for('main.index') }}">Kairo</a><i class="bi bi-chevron-right" aria-hidden="true"></i><span id="resource-breadcrumb-name">{{ scope_name }}</span><i class="bi bi-chevron-right" aria-hidden="true"></i><span class="current">Thành viên</span></nav>
         <section class="page-heading">
             <div><p class="eyebrow">QUẢN LÝ {{ scope_name|upper }}</p><h1>Thành viên</h1><p class="subtitle">Quản lý những người có quyền truy cập vào {{ scope_name|lower }} này.</p></div>
             <div class="heading-actions">
@@ -48,6 +50,7 @@
             <div class="table-wrap"><table><thead><tr><th scope="col">Email</th><th scope="col">Vai trò</th><th scope="col">Hết hạn</th><th scope="col" class="actions-heading">Thao tác</th></tr></thead><tbody id="invitation-rows"></tbody></table></div>
         </section>
     </main>
+    </div>
 
     <dialog id="resource-dialog" class="invite-dialog">
         <form id="resource-form" class="dialog-form">
@@ -69,7 +72,7 @@
             <section class="share-box" id="share-box" hidden><p id="email-status"></p><label for="invite-link">Liên kết mời một lần</label><div class="share-link-row"><input id="invite-link" type="text" readonly><button type="button" id="copy-invite" class="secondary-button"><i class="bi bi-copy" aria-hidden="true"></i> Sao chép</button></div><small>Không chia sẻ liên kết này với người khác. Liên kết hết hạn theo thời gian hiển thị.</small></section>
         </form>
     </dialog>
-    <script src="{{ url_for('static', filename='js/members.js', v=5) }}" defer></script>
-    <script src="{{ url_for('static', filename='js/notifications.js', v=6) }}" defer></script>
+    <script src="{{ url_for('static', filename='js/members.js', v=7) }}" defer></script>
+    <script src="{{ url_for('static', filename='js/notifications.js', v=7) }}" defer></script>
 </body>
 </html>

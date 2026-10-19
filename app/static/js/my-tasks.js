@@ -1,7 +1,6 @@
 (() => {
     const groupsRoot = document.querySelector("#my-task-groups");
     const emptyState = document.querySelector("#my-task-empty");
-    const notice = document.querySelector("#my-tasks-notice");
     const searchInput = document.querySelector("#task-search");
     const statusFilter = document.querySelector("#status-filter");
     const priorityFilter = document.querySelector("#priority-filter");
@@ -33,8 +32,7 @@
     }
 
     function showNotice(message) {
-        notice.textContent = message;
-        notice.hidden = !message;
+        window.showAppToast?.(message, { type: "error" });
     }
 
     async function api(url, method = "GET", body) {
@@ -278,9 +276,9 @@
 
     function setProfile(user) {
         const name = user.display_name || user.username || "Tài khoản";
-        document.querySelector("#my-user-name").textContent = name;
-        document.querySelector("#my-user-email").textContent = user.email || user.username || "";
-        const avatar = document.querySelector("#my-user-avatar");
+        document.querySelector("#profile-name").textContent = name;
+        document.querySelector("#profile-email").textContent = user.email || user.username || "";
+        const avatar = document.querySelector("#profile-avatar");
         if (user.avatar_url) {
             const image = document.createElement("img");
             image.src = user.avatar_url;
@@ -289,6 +287,55 @@
         } else {
             avatar.textContent = initials(name);
         }
+    }
+
+    async function loadSidebarContext() {
+        const result = await api("/workspaces");
+        const workspaces = result.workspaces || [];
+        const workspaceMenu = document.querySelector("#workspace-menu");
+        const projectMenu = document.querySelector("#project-menu");
+        const query = new URLSearchParams(window.location.search);
+        const requestedWorkspaceId = Number(query.get("workspace_id"));
+        const workspace = workspaces.find((item) => item.id === requestedWorkspaceId) || workspaces[0];
+        if (!workspace) return;
+
+        workspaceMenu.replaceChildren(...workspaces.map((item) => {
+            const option = document.createElement("button");
+            option.type = "button";
+            option.dataset.workspaceId = String(item.id);
+            option.textContent = item.name;
+            option.setAttribute("aria-current", String(item.id === workspace.id));
+            return option;
+        }));
+        const workspaceSwitcher = document.querySelector("#workspace-switcher");
+        workspaceSwitcher.addEventListener("click", () => {
+            workspaceMenu.hidden = !workspaceMenu.hidden;
+            workspaceSwitcher.setAttribute("aria-expanded", String(!workspaceMenu.hidden));
+        });
+        workspaceMenu.addEventListener("click", (event) => {
+            const option = event.target.closest("[data-workspace-id]");
+            if (!option) return;
+            window.location.assign(`/tasks/?workspace_id=${option.dataset.workspaceId}`);
+        });
+
+        const projectsResult = await api(`/workspaces/${workspace.id}/projects`);
+        const projects = projectsResult.projects || [];
+        projectMenu.replaceChildren(...projects.map((item) => {
+            const option = document.createElement("button");
+            option.type = "button";
+            option.dataset.projectId = String(item.id);
+            option.textContent = item.name;
+            option.setAttribute("aria-current", String(item.id === Number(query.get("project_id"))));
+            return option;
+        }));
+        document.querySelector("#project-picker-toggle").addEventListener("click", (event) => {
+            projectMenu.hidden = !projectMenu.hidden;
+            event.currentTarget.setAttribute("aria-expanded", String(!projectMenu.hidden));
+        });
+        projectMenu.addEventListener("click", (event) => {
+            const option = event.target.closest("[data-project-id]");
+            if (option) window.location.assign(`/tasks/?workspace_id=${workspace.id}&project_id=${option.dataset.projectId}`);
+        });
     }
 
     async function updateTaskStatus(task, checkbox) {
@@ -309,7 +356,7 @@
 
     async function loadPage() {
         try {
-            const [profile, result] = await Promise.all([api("/auth/me"), api("/tasks/api/my")]);
+            const [profile, result] = await Promise.all([api("/auth/me"), api("/tasks/api/my"), loadSidebarContext().catch(() => {})]);
             setProfile(profile.user);
             tasks = result.tasks || [];
             render();
@@ -333,6 +380,13 @@
             });
             render();
         });
+    });
+    const projectTreeToggle = document.querySelector("#project-switcher");
+    projectTreeToggle.addEventListener("click", () => {
+        const children = document.querySelector("#project-children");
+        children.hidden = !children.hidden;
+        projectTreeToggle.setAttribute("aria-expanded", String(!children.hidden));
+        projectTreeToggle.querySelector("i").className = children.hidden ? "bi bi-chevron-right" : "bi bi-chevron-down";
     });
     groupsRoot.addEventListener("change", (event) => {
         const checkbox = event.target.closest(".task-done-toggle");

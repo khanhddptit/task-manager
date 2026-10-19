@@ -10,13 +10,12 @@ const notificationToggle = document.querySelector("#notification-toggle");
 const notificationPanel = document.querySelector("#notification-panel");
 const notificationList = document.querySelector("#notification-list");
 const notificationBadge = document.querySelector("#notification-badge");
-const toast = document.querySelector("#toast-message");
+const isDemoPreview = document.body.dataset.demoPreview === "1";
 const originalTasks = [...document.querySelectorAll(".task-card")].map((card) => card.cloneNode(true));
 const taskLabels = { todo: "To Do", in_progress: "In Progress", review: "Review", done: "Done" };
 const statusClasses = { todo: "todo-dot", in_progress: "progress-dot", review: "review-dot", done: "done-dot" };
 let nextTaskNumber = 3;
-let canCreateTasks = true;
-let toastTimer;
+let canCreateTasks = isDemoPreview;
 let notificationRefreshTimer = null;
 let lastUnreadNotificationCount = null;
 let sortAscending = true;
@@ -45,10 +44,7 @@ themeButton.addEventListener("click", () => {
 });
 
 function showToast(message) {
-    toast.textContent = message;
-    toast.classList.add("visible");
-    window.clearTimeout(toastTimer);
-    toastTimer = window.setTimeout(() => toast.classList.remove("visible"), 2600);
+    window.showAppToast?.(message);
 }
 
 function getCards() {
@@ -169,7 +165,7 @@ function renderList() {
         const assignee = document.createElement("span");
         assignee.className = "list-assignee";
         assignee.textContent = card.dataset.assigneeName || (
-            card.dataset.assignee === "dk" ? "Đặng Duy Khánh" : "Chưa giao"
+            card.dataset.assignee === "sample" ? "Khách xem trước" : "Chưa giao"
         );
         row.append(taskName, status, priority, assignee);
         listBody.append(row);
@@ -555,7 +551,7 @@ function editTaskComment(item, card, comment) {
 }
 
 async function deleteTaskComment(card, comment) {
-    if (!window.confirm("Xóa bình luận này?")) return;
+    if (!await window.kairoConfirm("Xóa bình luận này?", { confirmLabel: "Xóa" })) return;
     try {
         await writeApiJson(`${commentsUrl(card.dataset.serverId)}/${comment.id}`, "DELETE", {});
         await loadTaskComments(card);
@@ -708,23 +704,39 @@ function renderProjectMenu(projects, selectedId) {
 }
 
 function updateBoardIdentity(user, workspace, project) {
-    const userName = user.display_name || user.username;
     document.querySelector(".workspace-copy strong").textContent = workspace.name;
     document.querySelector(".workspace-copy small").textContent = workspace.role || "Thành viên";
     document.querySelector(".workspace-avatar").textContent = initialsFor(workspace.name);
-    document.querySelector(".tree-project strong").textContent = project.name;
-    document.querySelector(".tree-project small").textContent = `TP-${project.id}`;
+    document.querySelector("#project-switcher strong").textContent = project.name;
+    document.querySelector("#project-switcher small").textContent = `TP-${project.id}`;
     document.querySelector(".board-heading h1").textContent = project.name;
     document.querySelector(".project-summary > span:first-child").textContent = `TP-${project.id}`;
     document.querySelectorAll(".breadcrumbs > span")[1].textContent = workspace.name;
-    document.querySelector(".profile-copy strong").textContent = userName;
-    document.querySelector(".profile-copy small").textContent = user.email || user.username;
-    document.querySelector(".profile-avatar").textContent = initialsFor(userName);
     const projectQuery = `?workspace_id=${workspace.id}&project_id=${project.id}`;
     document.querySelector("#sprint-link").href = `/sprints/${projectQuery}`;
     document.querySelector("#progress-link").href = `/sprints/progress${projectQuery}`;
     document.querySelector("#workspace-members-link").href = `/workspaces/${workspace.id}/members/page`;
     document.querySelector("#project-members-link").href = `/workspaces/${workspace.id}/projects/${project.id}/members/page`;
+}
+
+function updateProfileIdentity(user) {
+    const profileName = user.display_name || user.username;
+    const avatar = document.querySelector("#profile-avatar");
+    const name = document.querySelector("#profile-name");
+    const email = document.querySelector("#profile-email");
+    if (!avatar || !name || !email) return;
+
+    avatar.querySelector("img")?.remove();
+    avatar.textContent = initialsFor(profileName);
+    name.textContent = profileName;
+    email.textContent = user.email || user.username;
+    if (user.avatar_url) {
+        const image = document.createElement("img");
+        image.src = user.avatar_url;
+        image.alt = "";
+        image.addEventListener("error", () => image.remove(), { once: true });
+        avatar.append(image);
+    }
 }
 
 async function persistLiveStatus(card, oldStatus, newStatus, sourceList, oldIndex) {
@@ -745,19 +757,24 @@ async function persistLiveStatus(card, oldStatus, newStatus, sourceList, oldInde
 
 async function loadLiveBoardData() {
     const badgeLabel = document.querySelector("#demo-badge-label");
+    if (isDemoPreview) {
+        badgeLabel.textContent = "BẢN DEMO";
+        return;
+    }
     badgeLabel.textContent = "KIỂM TRA TÀI KHOẢN…";
     try {
         const me = await readApiJson("/auth/me");
         if (!me) {
-            badgeLabel.textContent = "BẢN DEMO";
+            badgeLabel.textContent = "VUI LÒNG ĐĂNG NHẬP";
             return;
         }
+        updateProfileIdentity(me.user);
         loadMyTaskCount();
         const workspaceResult = await readApiJson("/workspaces");
         const workspaces = workspaceResult.workspaces || [];
         availableWorkspaces = workspaces;
         if (!workspaces.length) {
-            document.querySelector("#demo-badge-label").textContent = "BẢN DEMO · CHƯA CÓ WORKSPACE";
+            document.querySelector("#demo-badge-label").textContent = "CHƯA CÓ WORKSPACE";
             return;
         }
 
@@ -771,7 +788,7 @@ async function loadLiveBoardData() {
         availableProjects = projects;
         if (!projects.length) {
             renderProjectMenu(projects, null);
-            document.querySelector("#demo-badge-label").textContent = "BẢN DEMO · CHƯA CÓ PROJECT";
+            document.querySelector("#demo-badge-label").textContent = "CHƯA CÓ PROJECT";
             document.querySelector(".workspace-copy strong").textContent = workspace.name;
             document.querySelector(".workspace-copy small").textContent = workspace.role || "Thành viên";
             return;
@@ -822,8 +839,8 @@ async function loadLiveBoardData() {
             window.history.replaceState({}, "", nextUrl);
         }
     } catch (error) {
-        badgeLabel.textContent = "BẢN DEMO · OFFLINE";
-        showToast(error.message || "Không tải được dữ liệu board. Đang hiển thị bản demo.");
+        badgeLabel.textContent = "KHÔNG TẢI ĐƯỢC DỮ LIỆU";
+        showToast(error.message || "Không tải được dữ liệu board.");
     }
 }
 
@@ -891,6 +908,15 @@ document.querySelector("#workspace-switcher").addEventListener("click", (event) 
 });
 
 document.querySelector("#project-switcher").addEventListener("click", (event) => {
+    const children = document.querySelector("#project-children");
+    children.hidden = !children.hidden;
+    event.currentTarget.setAttribute("aria-expanded", String(!children.hidden));
+    event.currentTarget.querySelector("i").className = children.hidden
+        ? "bi bi-chevron-right"
+        : "bi bi-chevron-down";
+});
+
+document.querySelector("#project-picker-toggle").addEventListener("click", (event) => {
     const menu = document.querySelector("#project-menu");
     if (!availableProjects.length) {
         showToast("Workspace này chưa có project.");
@@ -1037,7 +1063,7 @@ document.querySelector("#notification-read-all").addEventListener("click", async
     }
 });
 document.querySelector("#notification-clear-read").addEventListener("click", async () => {
-    if (!window.confirm("Xóa các thông báo đã đọc?")) return;
+    if (!await window.kairoConfirm("Xóa các thông báo đã đọc?", { confirmLabel: "Xóa" })) return;
     const button = document.querySelector("#notification-clear-read");
     button.disabled = true;
     try {
@@ -1159,9 +1185,9 @@ document.addEventListener("click", (event) => {
         document.querySelector("#workspace-menu").hidden = true;
         document.querySelector("#workspace-switcher").setAttribute("aria-expanded", "false");
     }
-    if (!event.target.closest(".project-tree")) {
+    if (!event.target.closest(".project-tree") && !event.target.closest(".project-heading")) {
         document.querySelector("#project-menu").hidden = true;
-        document.querySelector("#project-switcher").setAttribute("aria-expanded", "false");
+        document.querySelector("#project-picker-toggle").setAttribute("aria-expanded", "false");
     }
     if (!event.target.closest(".notification-wrap")) {
         notificationPanel.hidden = true;

@@ -9,22 +9,12 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Manrope:wght@500;600;700;800&display=swap" rel="stylesheet">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet">
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/kanban.css', v=6) }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/kanban.css', v=18) }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/sprints.css', v=1) }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/notifications.css', v=2) }}">
 </head>
 <body class="kanban-page sprint-page" data-page="sprints">
-    <aside class="sidebar" aria-label="Thanh bên">
-        <a class="sidebar-brand" href="{{ url_for('main.index') }}"><span class="sidebar-brand-icon"><i class="bi bi-layers-fill" aria-hidden="true"></i></span><span><strong>Kairo</strong><small>PROJECT WORKSPACE</small></span></a>
-        <div class="workspace-picker"><div class="workspace-switcher"><span class="workspace-avatar">K</span><span class="workspace-copy"><strong id="workspace-name">Workspace</strong><small id="workspace-role">Project</small></span></div></div>
-        <nav class="primary-nav" aria-label="Điều hướng workspace">
-            <a href="{{ url_for('tasks.index') }}" class="nav-link"><i class="bi bi-kanban" aria-hidden="true"></i><span>Bảng công việc</span></a>
-            <a href="{{ url_for('main.sprint_progress') }}" class="nav-link" id="progress-nav-link"><i class="bi bi-bar-chart" aria-hidden="true"></i><span>Tiến độ</span></a>
-        </nav>
-        <div class="project-heading"><span>Dự án</span></div>
-        <div class="project-tree"><div class="tree-project"><i class="bi bi-chevron-down" aria-hidden="true"></i><span class="project-dot"></span><strong id="project-name">Project</strong></div><a class="tree-item selected" href="#sprint-list"><i class="bi bi-lightning-charge" aria-hidden="true"></i><span>Sprint</span></a></div>
-        <a class="profile-button" href="{{ url_for('main.user_settings') }}"><span class="profile-avatar" id="user-avatar">K</span><span class="profile-copy"><strong id="user-name">Tài khoản</strong><small id="user-email"></small></span><i class="bi bi-chevron-down" aria-hidden="true"></i></a>
-    </aside>
+    {% include 'partials/app-sidebar.html' %}
     <div class="app-shell">
         <header class="topbar"><div class="breadcrumbs"><span class="breadcrumb-dot"></span><span id="breadcrumb-project">Project</span><i class="bi bi-chevron-right" aria-hidden="true"></i><span class="breadcrumb-current">Sprint</span></div><div class="topbar-actions"><button type="button" class="topbar-icon" id="theme-toggle" aria-label="Đổi giao diện"><i class="bi bi-moon" aria-hidden="true"></i></button>{% include 'partials/notifications.html' %}</div></header>
         <main class="sprint-main" id="sprint-list">
@@ -41,7 +31,7 @@
     </div>
     <dialog class="sprint-dialog" id="sprint-dialog"><form id="sprint-form" method="dialog"><div class="dialog-heading"><div><p>SPRINT PLAN</p><h2 id="sprint-dialog-title">Tạo Sprint</h2></div><button type="button" class="dialog-close" data-close-dialog aria-label="Đóng"><i class="bi bi-x-lg" aria-hidden="true"></i></button></div><label class="dialog-field">Tên Sprint<input name="name" maxlength="80" required placeholder="Ví dụ: Sprint 01"></label><div class="dialog-grid"><label class="dialog-field">Ngày bắt đầu<input name="start_date" type="date" required></label><label class="dialog-field">Ngày kết thúc<input name="end_date" type="date" required></label></div><label class="dialog-field">Ghi chú<textarea name="goal" rows="3" maxlength="2000" placeholder="Ghi chú cho Sprint"></textarea></label><p class="sprint-form-error" id="sprint-form-error" role="alert" hidden></p><div class="dialog-actions"><span class="dialog-actions-spacer"></span><button type="button" class="secondary-button" data-close-dialog>Hủy</button><button type="submit" class="primary-button" id="sprint-submit">Tạo Sprint</button></div></form></dialog>
     <div class="toast-message" id="toast-message" role="status" aria-live="polite"></div>
-    <script src="{{ url_for('static', filename='js/sprints.js', v=1) }}" defer></script>
-    <script src="{{ url_for('static', filename='js/notifications.js', v=6) }}" defer></script>
+    <script src="{{ url_for('static', filename='js/sprints.js', v=4) }}" defer></script>
+    <script src="{{ url_for('static', filename='js/notifications.js', v=7) }}" defer></script>
 </body>
 </html>

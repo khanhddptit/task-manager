@@ -79,6 +79,26 @@ a { color: inherit; }
 .settings-footer { margin-top: 26px; color: #a0a8b4; text-align: center; font-size: 10px; }
 .settings-footer span { margin: 0 4px; color: #cbd0d7; }
 
+.settings-page.theme-dark { color-scheme: dark; --settings-ink: #edf0f5; --settings-muted: #a7adb7; --settings-border: rgba(255,255,255,.1); background: #17191c; }
+.settings-page.theme-dark .settings-topbar { border-color: rgba(255,255,255,.08); background: rgba(28,30,33,.94); }
+.settings-page.theme-dark .settings-brand, .settings-page.theme-dark .settings-intro h1, .settings-page.theme-dark .settings-card h2 { color: #edf0f5; }
+.settings-page.theme-dark .settings-top-actions a, .settings-page.theme-dark .settings-top-actions button, .settings-page.theme-dark .back-link { color: #a7adb7; }
+.settings-page.theme-dark .settings-top-actions a:hover, .settings-page.theme-dark .settings-top-actions button:hover { background: #292c31; }
+.settings-page.theme-dark .settings-nav, .settings-page.theme-dark .settings-card { background: #202226; box-shadow: 0 5px 20px rgba(0,0,0,.12); }
+.settings-page.theme-dark .settings-nav-link { color: #a7adb7; }
+.settings-page.theme-dark .settings-nav-link:hover, .settings-page.theme-dark .settings-nav-link.active { color: #8eb1ff; background: #292f3a; }
+.settings-page.theme-dark .settings-nav-note, .settings-page.theme-dark .avatar-row, .settings-page.theme-dark .google-link-row, .settings-page.theme-dark .password-login-note { color: #a7adb7; border-color: rgba(255,255,255,.08); background: #25272b; }
+.settings-page.theme-dark .settings-card-heading p, .settings-page.theme-dark .avatar-copy > span, .settings-page.theme-dark .google-link-copy span, .settings-page.theme-dark .settings-field > span, .settings-page.theme-dark .settings-field small { color: #89919e; }
+.settings-page.theme-dark .avatar-copy strong, .settings-page.theme-dark .google-link-copy strong { color: #dce1e8; }
+.settings-page.theme-dark .settings-field { color: #c2c8d1; }
+.settings-page.theme-dark .settings-field input { border-color: #3b3e44; color: #e3e6ec; background: #1b1d21; }
+.settings-page.theme-dark .settings-field input[readonly] { color: #929aa6; background: #25272b; }
+.settings-page.theme-dark .secondary-button { border-color: #41444b; color: #c2c8d1; background: #25272b; }
+.settings-page.theme-dark .text-button { color: #a7adb7; }
+.settings-page.theme-dark .google-link-icon { border-color: #41444b; background: #202226; }
+.settings-page.theme-dark .security-divider { background: rgba(255,255,255,.1); }
+.settings-page.theme-dark .settings-footer { color: #89919e; }
+
 @media (max-width: 760px) {
     .settings-topbar { height: 56px; padding: 0 16px; }
     .settings-top-actions { gap: 3px; }

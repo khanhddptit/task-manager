@@ -26,6 +26,14 @@ themeButton?.addEventListener("click", () => {
     applyTheme(document.body.classList.contains("theme-light") ? "dark" : "light");
 });
 
+const projectTreeToggle = document.querySelector("#project-switcher");
+const projectChildren = document.querySelector("#project-children");
+projectTreeToggle?.addEventListener("click", () => {
+    const expanded = projectTreeToggle.getAttribute("aria-expanded") === "true";
+    projectTreeToggle.setAttribute("aria-expanded", String(!expanded));
+    if (projectChildren) projectChildren.hidden = expanded;
+});
+
 function csrfHeaders() {
     return {
         "Content-Type": "application/json",
@@ -55,11 +63,7 @@ function formatDate(value) {
 }
 
 function showNotice(message, isError = false) {
-    const notice = document.querySelector("#page-notice");
-    if (!notice) return;
-    notice.hidden = !message;
-    notice.textContent = message || "";
-    notice.classList.toggle("is-error", isError);
+    window.showAppToast?.(message, { type: isError ? "error" : "success" });
 }
 
 function setEmptyRow(tbody, message, colspan) {
@@ -99,6 +103,10 @@ if (memberPage) {
         try {
             const result = await requestJson(resourceUrl);
             resource = scope === "workspace" ? result.workspace : result.project;
+            if (resource?.name) {
+                document.querySelector("#resource-breadcrumb-name").textContent = resource.name;
+                document.querySelector("#resource-topbar-name").textContent = `${resource.name} · Thành viên`;
+            }
             const canEdit = scope === "workspace"
                 ? ["owner", "admin"].includes(resource.role)
                 : resource.role === "admin";
@@ -158,7 +166,7 @@ if (memberPage) {
         const prompt = scope === "workspace"
             ? `Xóa Workspace “${resource.name}”? Các project, task và dữ liệu liên quan trong workspace này cũng sẽ bị xóa.`
             : `Xóa Project “${resource.name}”? Các task và dữ liệu liên quan trong project này cũng sẽ bị xóa.`;
-        if (!window.confirm(prompt)) return;
+        if (!await window.kairoConfirm(prompt, { confirmLabel: "Xóa" })) return;
         const button = event.currentTarget;
         button.disabled = true;
         try {
@@ -212,7 +220,7 @@ if (memberPage) {
                 resend.className = "text-button";
                 resend.textContent = "Gửi lại";
                 resend.addEventListener("click", async () => {
-                    if (!window.confirm(`Tạo và gửi lại lời mời cho ${invitation.email}? Liên kết cũ sẽ mất hiệu lực.`)) return;
+                    if (!await window.kairoConfirm(`Tạo và gửi lại lời mời cho ${invitation.email}? Liên kết cũ sẽ mất hiệu lực.`, { confirmLabel: "Gửi lại", danger: false })) return;
                     resend.disabled = true;
                     try {
                         const result = await requestJson(`${invitationsUrl}/${invitation.id}/resend`, {
@@ -332,7 +340,7 @@ if (memberPage) {
                     transfer.textContent = "Chuyển Owner";
                     transfer.setAttribute("aria-label", `Chuyển quyền Owner cho ${name}`);
                     transfer.addEventListener("click", async () => {
-                        if (!window.confirm(`Chuyển quyền Workspace Owner cho ${name}? Bạn sẽ trở thành Admin.`)) return;
+                        if (!await window.kairoConfirm(`Chuyển quyền Workspace Owner cho ${name}? Bạn sẽ trở thành Admin.`, { title: "Chuyển quyền sở hữu", confirmLabel: "Chuyển quyền" })) return;
                         transfer.disabled = true;
                         try {
                             await requestJson(`/workspaces/${memberPage.dataset.workspaceId}/transfer-owner`, {
@@ -357,7 +365,7 @@ if (memberPage) {
                     remove.textContent = "Gỡ";
                     remove.setAttribute("aria-label", `Gỡ ${name}`);
                     remove.addEventListener("click", async () => {
-                        if (!window.confirm(`Gỡ ${name} khỏi ${scope === "project" ? "Project" : "Workspace"}?`)) return;
+                        if (!await window.kairoConfirm(`Gỡ ${name} khỏi ${scope === "project" ? "Project" : "Workspace"}?`, { confirmLabel: "Gỡ thành viên" })) return;
                         remove.disabled = true;
                         try {
                             await requestJson(`${memberUrl}/${id}`, { method: "DELETE", headers: csrfHeaders() });
@@ -388,7 +396,7 @@ if (memberPage) {
     }
 
     leaveWorkspaceButton.addEventListener("click", async () => {
-        if (!window.confirm("Rời Workspace này? Bạn sẽ mất quyền truy cập vào các project trong đó.")) return;
+        if (!await window.kairoConfirm("Rời Workspace này? Bạn sẽ mất quyền truy cập vào các project trong đó.", { title: "Rời Workspace", confirmLabel: "Rời Workspace" })) return;
         leaveWorkspaceButton.disabled = true;
         try {
             await requestJson(`/workspaces/${memberPage.dataset.workspaceId}/leave`, {
@@ -450,7 +458,6 @@ if (memberPage) {
 
 if (directoryPage) {
     const content = document.querySelector("#directory-content");
-    const notice = document.querySelector("#directory-notice");
     const createButton = document.querySelector("#create-workspace");
     const workspaceDialog = document.querySelector("#workspace-dialog");
     const workspaceForm = document.querySelector("#workspace-form");
@@ -461,9 +468,7 @@ if (directoryPage) {
     let editingWorkspace = null;
 
     function showDirectoryNotice(message, isError = false) {
-        notice.hidden = !message;
-        notice.textContent = message || "";
-        notice.classList.toggle("is-error", isError);
+        window.showAppToast?.(message, { type: isError ? "error" : "success" });
     }
 
     function openWorkspaceDialog(workspace = null) {
@@ -471,6 +476,7 @@ if (directoryPage) {
         workspaceForm.reset();
         workspaceName.value = workspace?.name || "";
         workspaceDescription.value = workspace?.description || "";
+        workspaceError.textContent = "";
         workspaceError.hidden = true;
         workspaceDelete.hidden = !workspace || workspace.role !== "owner";
         document.querySelector("#workspace-dialog-title").textContent = workspace ? "Sửa Workspace" : "Tạo Workspace";
@@ -483,6 +489,12 @@ if (directoryPage) {
     }
 
     createButton.addEventListener("click", () => openWorkspaceDialog());
+    workspaceName.addEventListener("input", () => {
+        if (workspaceName.value.trim()) {
+            workspaceError.textContent = "";
+            workspaceError.hidden = true;
+        }
+    });
     document.querySelector("[data-close-workspace-dialog]").addEventListener("click", () => workspaceDialog.close());
     workspaceDialog.addEventListener("click", (event) => {
         if (event.target === workspaceDialog) workspaceDialog.close();
@@ -520,7 +532,7 @@ if (directoryPage) {
     });
     async function deleteWorkspace(workspace, button) {
         if (!workspace || workspace.role !== "owner") return;
-        if (!window.confirm(`Xóa Workspace “${workspace.name}”? Các project, task và dữ liệu liên quan trong workspace này cũng sẽ bị xóa.`)) return;
+        if (!await window.kairoConfirm(`Xóa Workspace “${workspace.name}”? Các project, task và dữ liệu liên quan trong workspace này cũng sẽ bị xóa.`, { title: "Xóa Workspace", confirmLabel: "Xóa Workspace" })) return;
         button.disabled = true;
         try {
             await requestJson(`${directoryPage.dataset.directoryUrl}/${workspace.id}`, {

@@ -9,16 +9,10 @@
     const empty = document.querySelector("#notification-empty");
     const readAllButton = document.querySelector("#notification-read-all");
     const clearReadButton = document.querySelector("#notification-clear-read");
-    const toast = document.querySelector("#toast-message");
     let previousUnreadCount = null;
-    let toastTimer;
 
     function showToast(message) {
-        if (!toast) return;
-        toast.textContent = message;
-        toast.classList.add("visible");
-        window.clearTimeout(toastTimer);
-        toastTimer = window.setTimeout(() => toast.classList.remove("visible"), 2600);
+        window.showAppToast?.(message);
     }
 
     async function request(url, method = "GET", body = undefined) {
@@ -141,7 +135,7 @@
         }
     });
     clearReadButton.addEventListener("click", async () => {
-        if (!window.confirm("Xóa các thông báo đã đọc?")) return;
+        if (!await window.kairoConfirm("Xóa các thông báo đã đọc?", { confirmLabel: "Xóa" })) return;
         clearReadButton.disabled = true;
         try {
             await request("/notifications/read", "DELETE", {});

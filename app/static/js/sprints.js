@@ -1,18 +1,12 @@
 (() => {
     const page = document.body.dataset.page;
     const query = new URLSearchParams(window.location.search);
-    const toast = document.querySelector("#toast-message");
-    let toastTimer;
     let context;
     let currentSprints = [];
     let editingSprintId = null;
 
     function showToast(message) {
-        if (!toast) return;
-        toast.textContent = message;
-        toast.classList.add("visible");
-        clearTimeout(toastTimer);
-        toastTimer = setTimeout(() => toast.classList.remove("visible"), 3200);
+        window.showAppToast?.(message);
     }
 
     async function api(url, method = "GET", body = undefined) {
@@ -100,13 +94,41 @@
         if (!project) throw new Error("Workspace này chưa có project để quản lý Sprint.");
         context = { me: me.user, workspace, projects, project };
         const name = me.user.display_name || me.user.username || me.user.email || "Tài khoản";
-        document.querySelector("#workspace-name").textContent = workspace.name;
+        document.querySelector("#sidebar-workspace-name").textContent = workspace.name;
         document.querySelector("#workspace-role").textContent = workspace.role || "Thành viên";
+        document.querySelector("#workspace-avatar").textContent = initials(workspace.name);
         document.querySelector("#project-name").textContent = project.name;
+        document.querySelector("#project-code").textContent = `TP-${project.id}`;
         document.querySelector("#breadcrumb-project").textContent = project.name;
-        document.querySelector("#user-name").textContent = name;
-        document.querySelector("#user-email").textContent = me.user.email || me.user.username || "";
-        document.querySelector("#user-avatar").textContent = initials(name);
+        document.querySelector("#profile-name").textContent = name;
+        document.querySelector("#profile-email").textContent = me.user.email || me.user.username || "";
+        const profileAvatar = document.querySelector("#profile-avatar");
+        profileAvatar.textContent = initials(name);
+        if (me.user.avatar_url) {
+            const image = document.createElement("img");
+            image.src = me.user.avatar_url;
+            image.alt = "";
+            image.addEventListener("error", () => image.remove(), { once: true });
+            profileAvatar.append(image);
+        }
+        const workspaceMenu = document.querySelector("#workspace-menu");
+        workspaceMenu.replaceChildren(...workspaces.map((item) => {
+            const option = document.createElement("button");
+            option.type = "button";
+            option.dataset.workspaceId = String(item.id);
+            option.setAttribute("aria-current", String(item.id === workspace.id));
+            option.textContent = item.name;
+            return option;
+        }));
+        const projectMenu = document.querySelector("#project-menu");
+        projectMenu.replaceChildren(...projects.map((item) => {
+            const option = document.createElement("button");
+            option.type = "button";
+            option.dataset.projectId = String(item.id);
+            option.setAttribute("aria-current", String(item.id === project.id));
+            option.textContent = item.name;
+            return option;
+        }));
         document.querySelectorAll("#project-select").forEach((select) => {
             select.replaceChildren(...projects.map((item) => new Option(item.name, item.id)));
             select.value = String(project.id);
@@ -117,9 +139,47 @@
             });
         });
         const baseQuery = `?workspace_id=${workspace.id}&project_id=${project.id}`;
-        document.querySelectorAll("#sprint-nav-link, #back-to-sprints").forEach((link) => { link.href = `/sprints/${baseQuery}`; });
-        const progressLink = document.querySelector("#progress-nav-link");
+        document.querySelector("#task-link").href = `/tasks/?workspace_id=${workspace.id}&project_id=${project.id}`;
+        document.querySelector("#sprint-link").href = `/sprints/${baseQuery}`;
+        document.querySelector("#project-members-link").href = `/workspaces/${workspace.id}/projects/${project.id}/members/page`;
+        document.querySelector("#workspace-members-link").href = `/workspaces/${workspace.id}/members/page`;
+        document.querySelectorAll("#back-to-sprints").forEach((link) => { link.href = `/sprints/${baseQuery}`; });
+        const progressLink = document.querySelector("#progress-link");
         if (progressLink) progressLink.href = `/sprints/progress${baseQuery}`;
+        document.querySelector("#workspace-switcher").addEventListener("click", (event) => {
+            const menu = document.querySelector("#workspace-menu");
+            menu.hidden = !menu.hidden;
+            event.currentTarget.setAttribute("aria-expanded", String(!menu.hidden));
+        });
+        document.querySelector("#workspace-menu").addEventListener("click", (event) => {
+            const option = event.target.closest("[data-workspace-id]");
+            if (!option) return;
+            const next = new URL(window.location.href);
+            next.searchParams.set("workspace_id", option.dataset.workspaceId);
+            next.searchParams.delete("project_id");
+            next.searchParams.delete("sprint_id");
+            window.location.assign(next);
+        });
+        document.querySelector("#project-picker-toggle").addEventListener("click", (event) => {
+            const menu = document.querySelector("#project-menu");
+            menu.hidden = !menu.hidden;
+            event.currentTarget.setAttribute("aria-expanded", String(!menu.hidden));
+        });
+        document.querySelector("#project-menu").addEventListener("click", (event) => {
+            const option = event.target.closest("[data-project-id]");
+            if (!option) return;
+            const next = new URL(window.location.href);
+            next.searchParams.set("workspace_id", context.workspace.id);
+            next.searchParams.set("project_id", option.dataset.projectId);
+            next.searchParams.delete("sprint_id");
+            window.location.assign(next);
+        });
+        document.querySelector("#project-switcher").addEventListener("click", (event) => {
+            const children = document.querySelector("#project-children");
+            children.hidden = !children.hidden;
+            event.currentTarget.setAttribute("aria-expanded", String(!children.hidden));
+            event.currentTarget.querySelector("i").className = children.hidden ? "bi bi-chevron-right" : "bi bi-chevron-down";
+        });
         document.querySelector("#create-sprint")?.toggleAttribute("hidden", project.role !== "admin");
         updateQuery();
     }
@@ -222,7 +282,7 @@
     async function changeSprintState(sprint) {
         const action = sprint.status === "planned" ? "start" : "complete";
         const confirmText = action === "start" ? `Bắt đầu ${sprint.name}?` : `Hoàn tất ${sprint.name}?`;
-        if (!window.confirm(confirmText)) return;
+        if (!await window.kairoConfirm(confirmText, { confirmLabel: action === "start" ? "Bắt đầu Sprint" : "Hoàn tất Sprint", danger: false })) return;
         try {
             await api(`${projectBase()}/sprints/${sprint.id}/${action}`, "POST", {});
             await loadSprints();
@@ -233,11 +293,7 @@
     }
 
     function showNotice(message) {
-        const notice = document.querySelector("#sprint-notice");
-        if (notice) {
-            notice.textContent = message;
-            notice.hidden = false;
-        } else showToast(message);
+        window.showAppToast?.(message, { type: "error" });
     }
 
     function renderBurndown(points) {

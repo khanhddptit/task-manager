@@ -9,13 +9,13 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Manrope:wght@500;600;700;800&display=swap" rel="stylesheet">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet">
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/settings.css', v=3) }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/settings.css', v=4) }}">
 </head>
 <body class="settings-page">
     <a class="settings-skip" href="#settings-main">Đến nội dung chính</a>
     <header class="settings-topbar">
         <a class="settings-brand" href="{{ url_for('main.index') }}"><span><i class="bi bi-layers-fill" aria-hidden="true"></i></span><strong>Kairo</strong></a>
-        <div class="settings-top-actions"><a href="{{ url_for('tasks.index') }}"><i class="bi bi-kanban" aria-hidden="true"></i> Bảng Kanban</a><button type="button" id="logout-button"><i class="bi bi-box-arrow-right" aria-hidden="true"></i> Đăng xuất</button></div>
+        <div class="settings-top-actions"><a href="{{ url_for('tasks.index') }}"><i class="bi bi-kanban" aria-hidden="true"></i> Bảng Kanban</a><button type="button" id="settings-theme-toggle" aria-label="Chuyển giao diện"><i class="bi bi-moon" aria-hidden="true"></i></button><button type="button" id="logout-button"><i class="bi bi-box-arrow-right" aria-hidden="true"></i> Đăng xuất</button></div>
     </header>
 
     <main class="settings-layout" id="settings-main">
@@ -72,6 +72,7 @@
         </div>
         <footer class="settings-footer">Kairo <span>·</span> Tài khoản của bạn, theo cách của bạn.</footer>
     </main>
-    <script src="{{ url_for('static', filename='js/settings.js', v=7) }}" defer></script>
+    <script src="{{ url_for('static', filename='js/settings.js', v=8) }}" defer></script>
+    <script src="{{ url_for('static', filename='js/theme-sync.js', v=1) }}" defer></script>
 </body>
 </html>
