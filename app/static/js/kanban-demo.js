@@ -93,10 +93,11 @@ function applyFilters() {
     document.querySelectorAll(".kanban-column").forEach((column) => {
         const visibleCount = visibleByStatus.get(column.dataset.column) || 0;
         column.querySelector(".column-count").textContent = String(visibleCount);
+        const totalCount = column.querySelectorAll(".task-card").length;
         const emptyButton = column.querySelector(".empty-add");
         const excludedByStatus = statusFilter !== "all" && statusFilter !== column.dataset.column;
         if (emptyButton) {
-            emptyButton.hidden = visibleCount > 0
+            emptyButton.hidden = totalCount > 0
                 || excludedByStatus
                 || Boolean(liveBoardContext && !canCreateTasks);
         }
