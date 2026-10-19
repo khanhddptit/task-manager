@@ -109,9 +109,13 @@ button { color: inherit; }
 .toolbar { display: flex; align-items: center; gap: 8px; margin-bottom: 21px; }
 .toolbar-label { margin-right: 3px; color: #707782; font-size: 9px; font-weight: 700; letter-spacing: .12em; }
 .filter-control { position: relative; display: inline-flex; align-items: center; gap: 8px; min-height: 31px; padding: 0 9px; border: 1px solid var(--line-strong); border-radius: 7px; color: #aeb5bf; background: rgba(255,255,255,.015); font-size: 11px; cursor: pointer; }
+.board-search { display: inline-flex; align-items: center; gap: 7px; min-height: 31px; padding: 0 9px; border: 1px solid var(--line-strong); border-radius: 7px; color: #8a929d; background: rgba(255,255,255,.015); }
+.board-search:focus-within { border-color: #5c8ff1; box-shadow: 0 0 0 3px rgba(78,140,255,.12); }
+.board-search input { width: 145px; padding: 0; border: 0; outline: 0; color: var(--text); background: transparent; font: 11px var(--font); }
+.board-search input::placeholder { color: #818995; }
 .filter-control > i:first-child { color: #8a929d; font-size: 12px; }
 .filter-control select { position: absolute; inset: 0; width: 100%; opacity: 0; cursor: pointer; }
-.filter-control select option { color: #1a1b1e; }
+select option { color: #edf0f5; background-color: #25272b; }
 .filter-control:focus-within, .filter-control:hover { border-color: rgba(255,255,255,.22); color: #e7eaf0; }
 .filter-control .chevron { margin-left: 1px; color: #6d747e; font-size: 9px; }
 .sort-button { cursor: pointer; }
@@ -289,6 +293,11 @@ button { color: inherit; }
     .list-header, .list-row { grid-template-columns: minmax(150px, 1.5fr) minmax(95px, .8fr) minmax(80px, .7fr); gap: 8px; padding: 10px; }
     .list-header > :last-child, .list-row > :last-child { display: none; }
 }
+@media (max-width: 1100px) {
+    .toolbar { flex-wrap: wrap; }
+    .toolbar-spacer { display: none; }
+    .demo-badge { margin-left: auto; }
+}
 @media (prefers-reduced-motion: reduce) {
     *, *::before, *::after { scroll-behavior: auto !important; transition-duration: .01ms !important; animation-duration: .01ms !important; }
 }
@@ -343,6 +352,7 @@ button { color: inherit; }
 .theme-light .filter-control > i:first-child { color: #8290a3; }
 .theme-light .filter-control:focus-within, .theme-light .filter-control:hover { border-color: #b7c1d0; color: #2f3c50; }
 .theme-light .filter-control .chevron { color: #8791a0; }
+.theme-light select option { color: #273246; background-color: #fff; }
 .theme-light .demo-badge { color: #718096; }
 .theme-light .column-header h2 { color: #303b4d; }
 .theme-light .default-chip { color: #7c8797; background: #edf0f4; }
@@ -353,6 +363,7 @@ button { color: inherit; }
 .theme-light .task-id { color: #8993a2; }
 .theme-light .task-card h3 { color: #2c3748; }
 .theme-light .task-meta, .theme-light .priority { color: #687589; }
+.theme-light .task-sprint-tag { color: #66509b; }
 .theme-light .empty-add { border-color: #d9e0e9; color: #788598; background: rgba(255,255,255,.68); }
 .theme-light .empty-add:hover { border-color: #aebbd0; color: #344258; background: #fff; }
 .theme-light .list-view { border-color: #e0e5ec; background: #fff; }
@@ -360,6 +371,7 @@ button { color: inherit; }
 .theme-light .list-row { color: #445066; border-color: #edf0f4; }
 .theme-light .list-task-id, .theme-light .list-assignee, .theme-light .list-status { color: #758195; }
 .theme-light .task-dialog { border-color: #e2e6ed; color: #273246; background: #fff; box-shadow: 0 28px 90px rgba(34,48,70,.2); }
+.theme-light .task-dialog .dialog-heading h2 { color: #263247; }
 .theme-light .dialog-heading h2 { color: #263247; }
 .theme-light .dialog-heading p, .theme-light .dialog-note { color: #8993a2; }
 .theme-light .dialog-close { color: #788497; }
@@ -370,6 +382,8 @@ button { color: inherit; }
 .theme-light .secondary-button { border-color: #dfe4eb; color: #5f6b7d; background: #fff; }
 .theme-light .secondary-button:hover { background: #f4f6f9; }
 .theme-light .delete-task-button { color: #be5b55; }
+.theme-light .comment-action.danger { color: #b42318; }
+.theme-light .task-comment-error { color: #b42318; }
 .theme-light .toast-message { border-color: #dce2eb; color: #2c3748; background: #fff; box-shadow: 0 12px 32px rgba(32,44,63,.16); }
 .theme-light .toast-message.is-error { border-color: #edc5c5; background: #fff7f7; }
 .theme-light .toast-close:hover, .theme-light .app-confirm-close:hover { background: rgba(40,52,70,.08); }

@@ -51,18 +51,56 @@ function getCards() {
     return [...document.querySelectorAll(".task-card")];
 }
 
+function updateFilterLabels() {
+    const labels = [
+        ["status-filter", "status-filter-label", "Lọc"],
+        ["assignee-filter", "assignee-filter-label", "Người phụ trách"],
+        ["priority-filter", "priority-filter-label", "Ưu tiên"],
+    ];
+    labels.forEach(([selectId, labelId, defaultLabel]) => {
+        const select = document.querySelector(`#${selectId}`);
+        const label = document.querySelector(`#${labelId}`);
+        label.textContent = select.value === "all"
+            ? defaultLabel
+            : select.selectedOptions[0]?.textContent || defaultLabel;
+    });
+}
+
 function applyFilters() {
+    updateFilterLabels();
+    const search = document.querySelector("#task-search").value.trim().toLocaleLowerCase("vi");
     const statusFilter = document.querySelector("#status-filter").value;
     const assigneeFilter = document.querySelector("#assignee-filter").value;
+    const priorityFilter = document.querySelector("#priority-filter").value;
+    const visibleByStatus = new Map();
     getCards().forEach((card) => {
         const matchesStatus = statusFilter === "all" || card.dataset.status === statusFilter;
         const matchesAssignee = assigneeFilter === "all" || card.dataset.assignee === assigneeFilter;
-        card.hidden = !(matchesStatus && matchesAssignee);
+        const matchesPriority = priorityFilter === "all" || card.dataset.priority === priorityFilter;
+        const searchableText = `${card.dataset.displayId || card.dataset.taskId} ${card.querySelector("h3")?.textContent || ""} ${card.dataset.description || ""}`.toLocaleLowerCase("vi");
+        const matchesSearch = !search || searchableText.includes(search);
+        const visible = matchesStatus && matchesAssignee && matchesPriority && matchesSearch;
+        card.hidden = !visible;
+        if (visible) visibleByStatus.set(card.dataset.status, (visibleByStatus.get(card.dataset.status) || 0) + 1);
     });
     document.querySelectorAll(".list-row").forEach((row) => {
         const matchesStatus = statusFilter === "all" || row.dataset.status === statusFilter;
         const matchesAssignee = assigneeFilter === "all" || row.dataset.assignee === assigneeFilter;
-        row.hidden = !(matchesStatus && matchesAssignee);
+        const matchesPriority = priorityFilter === "all" || row.dataset.priority === priorityFilter;
+        const searchableText = `${row.dataset.displayId || ""} ${row.dataset.title || ""} ${row.dataset.description || ""}`.toLocaleLowerCase("vi");
+        row.hidden = !(matchesStatus && matchesAssignee && matchesPriority && (!search || searchableText.includes(search)));
+    });
+    document.querySelectorAll(".kanban-column").forEach((column) => {
+        const visibleCount = visibleByStatus.get(column.dataset.column) || 0;
+        column.querySelector(".column-count").textContent = String(visibleCount);
+        const totalCount = column.querySelectorAll(".task-card").length;
+        const emptyButton = column.querySelector(".empty-add");
+        const excludedByStatus = statusFilter !== "all" && statusFilter !== column.dataset.column;
+        if (emptyButton) {
+            emptyButton.hidden = totalCount > 0
+                || excludedByStatus
+                || Boolean(liveBoardContext && !canCreateTasks);
+        }
     });
 }
 
@@ -129,8 +167,12 @@ function renderList() {
     getCards().forEach((card) => {
         const row = document.createElement("div");
         row.className = "list-row";
+        row.dataset.displayId = card.dataset.displayId || card.dataset.taskId;
+        row.dataset.title = card.querySelector("h3")?.textContent || "";
         row.dataset.status = card.dataset.status;
         row.dataset.assignee = card.dataset.assignee;
+        row.dataset.priority = card.dataset.priority;
+        row.dataset.description = card.dataset.description || "";
         row.tabIndex = 0;
         row.setAttribute("role", "button");
         row.setAttribute("aria-label", `Xem chi tiết ${card.querySelector("h3").textContent}`);
@@ -849,7 +891,7 @@ if (window.Sortable) {
         new Sortable(list, {
             group: "kairo-demo-tasks",
             animation: 180,
-            forceFallback: true,
+            fallbackOnBody: true,
             draggable: ".task-card",
             filter: ".empty-add",
             ghostClass: "sortable-ghost",
@@ -944,8 +986,10 @@ document.querySelector("#project-menu").addEventListener("click", (event) => {
     window.location.assign(nextUrl);
 });
 
+document.querySelector("#task-search").addEventListener("input", applyFilters);
 document.querySelector("#status-filter").addEventListener("change", applyFilters);
 document.querySelector("#assignee-filter").addEventListener("change", applyFilters);
+document.querySelector("#priority-filter").addEventListener("change", applyFilters);
 document.querySelector("#sort-button").addEventListener("click", (event) => {
     document.querySelectorAll(".task-list").forEach((list) => {
         const cards = [...list.querySelectorAll(".task-card")];
@@ -991,6 +1035,8 @@ document.querySelector(".more-menu").addEventListener("click", (event) => {
         originalTasks.forEach((card) => document.querySelector(`.task-list[data-status="${card.dataset.status}"]`).append(card.cloneNode(true)));
         document.querySelector("#status-filter").value = "all";
         document.querySelector("#assignee-filter").value = "all";
+        document.querySelector("#priority-filter").value = "all";
+        document.querySelector("#task-search").value = "";
         document.querySelector('[data-column="done"]').hidden = false;
         nextTaskNumber = 3;
         updateBoard();

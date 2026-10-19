@@ -127,6 +127,11 @@ body.theme-light { color-scheme: light; --page-bg: #f4f6fa; --sidebar-bg: #fff; 
 .theme-light .role-admin { color: #6c51b0; }
 .theme-light .invite-dialog { box-shadow: 0 24px 90px rgba(35, 47, 70, .2); }
 .theme-light .accept-icon { color: #386ebc; }
+.theme-light .eyebrow { color: #687589; }
+.theme-light .scope-chip { color: #566277; }
+.theme-light .notice { color: #315fae; background: rgba(78, 140, 255, .07); }
+.theme-light .notice.is-error, .theme-light .form-error, .theme-light .directory-empty.is-error { color: #a12b2b; }
+.theme-light .accept-destination { color: #315fae; }
 
 @media (max-width: 700px) {
     .members-topbar { height: 51px; padding: 0 15px; }

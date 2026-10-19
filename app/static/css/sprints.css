@@ -81,5 +81,10 @@
 .overdue-task strong { overflow: hidden; color: var(--text); font-size: 10px; font-weight: 600; text-overflow: ellipsis; white-space: nowrap; }
 .overdue-task span { color: #f18b82; font-size: 9px; white-space: nowrap; }
 .no-overdue { padding: 18px 0; color: var(--text-dim); font-size: 11px; text-align: center; }
+.theme-light .sprint-status-pill.active { color: #18794e; }
+.theme-light .sprint-status-pill.planned { color: #825a00; }
+.theme-light .sprint-notice, .theme-light .sprint-form-error { color: #a12b2b; }
+.theme-light .sprint-notice { border-color: #efcaca; background: #fff3f2; }
+.theme-light .overdue-task span { color: #b42318; }
 @media (max-width: 1000px) { .sprint-main { padding: 27px 24px 45px; }.progress-stat-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 @media (max-width: 700px) { .sprint-main { padding: 22px 15px 38px; }.sprint-heading { align-items: flex-start; flex-direction: column; gap: 15px; }.sprint-heading h1 { font-size: 23px; }.sprint-toolbar { align-items: stretch; flex-direction: column; }.sprint-toolbar-note { margin-left: 0; }.sprint-card-grid { grid-template-columns: 1fr; }.progress-title-row { flex-direction: column; }.progress-date-range { padding-top: 0; }.progress-columns { grid-template-columns: 1fr; }.chart-legend { flex-direction: column; gap: 6px; }.progress-panel { padding: 13px; }.status-row { grid-template-columns: 78px 1fr 23px; } }

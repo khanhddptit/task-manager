@@ -355,10 +355,13 @@
             loadProgress(select.value);
         });
         const requestedId = query.get("sprint_id") || "";
-        if (currentSprints.some((sprint) => String(sprint.id) === requestedId)) {
-            select.value = requestedId;
-            await loadProgress(requestedId);
-        }
+        const sprint = currentSprints.find((item) => String(item.id) === requestedId)
+            || currentSprints.find((item) => item.status === "active")
+            || currentSprints[0];
+        if (!sprint) return;
+        select.value = String(sprint.id);
+        updateQuery({ sprint_id: sprint.id });
+        await loadProgress(sprint.id);
     }
 
     async function loadProgress(sprintId) {
