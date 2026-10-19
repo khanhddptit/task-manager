@@ -89,10 +89,11 @@ td { height: 70px; padding: 10px 22px; color: var(--text-soft); border-top: 1px 
 .dialog-form h2 { margin: 0; font: 700 23px "Manrope", sans-serif; }
 .dialog-copy { margin: 9px 0 21px; color: var(--text-soft); font-size: 12px; line-height: 1.6; }
 .dialog-form > label, .share-box label { display: block; margin-bottom: 8px; color: var(--text-soft); font-size: 12px; font-weight: 600; }
-.dialog-form input, .dialog-form textarea { width: 100%; padding: 0 12px; color: var(--text); background: var(--page-bg); border: 1px solid var(--line-strong); border-radius: 8px; outline: none; }
+.dialog-form input, .dialog-form textarea, .dialog-form select { width: 100%; padding: 0 12px; color: var(--text); background: var(--page-bg); border: 1px solid var(--line-strong); border-radius: 8px; outline: none; }
 .dialog-form input { height: 43px; }
+.dialog-form select { height: 43px; margin-bottom: 4px; cursor: pointer; }
 .dialog-form textarea { min-height: 82px; padding-top: 10px; resize: vertical; }
-.dialog-form input:focus, .dialog-form textarea:focus { border-color: var(--blue); box-shadow: 0 0 0 3px rgba(78, 140, 255, .15); }
+.dialog-form input:focus, .dialog-form textarea:focus, .dialog-form select:focus { border-color: var(--blue); box-shadow: 0 0 0 3px rgba(78, 140, 255, .15); }
 .field-label-spaced { margin-top: 16px; }
 .field-label-spaced span { color: var(--text-dim); font-weight: 400; }
 .dialog-actions { display: flex; justify-content: space-between; gap: 10px; }

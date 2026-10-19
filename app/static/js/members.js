@@ -81,6 +81,20 @@ if (memberPage) {
     const invitationsUrl = memberPage.dataset.invitationsUrl;
     const inviteUrl = memberPage.dataset.invitationUrl;
     const scope = memberPage.dataset.scope;
+    const breadcrumbResource = document.querySelector("#resource-breadcrumb-name");
+    if (breadcrumbResource && scope === "project") {
+        breadcrumbResource.setAttribute("role", "link");
+        breadcrumbResource.setAttribute("tabindex", "0");
+        breadcrumbResource.style.cursor = "pointer";
+        const goToProject = () => {
+            const main = document.querySelector(".members-main");
+            window.location.assign(`/tasks/?workspace_id=${main.dataset.workspaceId}&project_id=${main.dataset.projectId}`);
+        };
+        breadcrumbResource.addEventListener("click", goToProject);
+        breadcrumbResource.addEventListener("keydown", (event) => {
+            if (event.key === "Enter" || event.key === " ") goToProject();
+        });
+    }
     const addButton = document.querySelector("#add-member");
     const leaveWorkspaceButton = document.querySelector("#leave-workspace");
     const dialog = document.querySelector("#invite-dialog");
@@ -98,6 +112,11 @@ if (memberPage) {
     const resourceDescription = document.querySelector("#resource-description");
     const resourceError = document.querySelector("#resource-error");
     let resource = null;
+    let projectMemberIds = new Set();
+    const workspaceMemberSelect = document.querySelector("#workspace-member-select");
+    workspaceMemberSelect?.addEventListener("change", () => {
+        inviteEmail.required = !workspaceMemberSelect.value;
+    });
 
     async function loadResource() {
         try {
@@ -163,16 +182,16 @@ if (memberPage) {
     });
     document.querySelector("#delete-resource").addEventListener("click", async (event) => {
         if (!resource) return;
+        const button = event.currentTarget;
         const prompt = scope === "workspace"
             ? `Xóa Workspace “${resource.name}”? Các project, task và dữ liệu liên quan trong workspace này cũng sẽ bị xóa.`
             : `Xóa Project “${resource.name}”? Các task và dữ liệu liên quan trong project này cũng sẽ bị xóa.`;
         if (!await window.kairoConfirm(prompt, { confirmLabel: "Xóa" })) return;
-        const button = event.currentTarget;
         button.disabled = true;
         try {
             await requestJson(resourceUrl, { method: "DELETE", headers: csrfHeaders() });
             const destination = scope === "project"
-                ? `/workspaces/${memberPage.closest("main").dataset.workspaceId}/members/page`
+                ? `/workspaces/${document.querySelector(".members-main").dataset.workspaceId}/members/page`
                 : "/members";
             window.location.assign(destination);
         } catch (error) {
@@ -183,6 +202,7 @@ if (memberPage) {
 
     function showInvitationLink(invitation) {
         inviteForm.reset();
+        if (workspaceMemberSelect) inviteEmail.required = true;
         inviteEmail.value = invitation.email;
         inviteError.hidden = true;
         inviteLink.value = new URL(invitation.invite_url, window.location.origin).href;
@@ -267,6 +287,7 @@ if (memberPage) {
     async function loadMembers() {
         try {
             const data = await requestJson(memberUrl);
+            projectMemberIds = new Set(data.members.map((member) => member.user_id ?? member.id));
             const rows = document.querySelector("#member-rows");
             rows.replaceChildren();
             document.querySelector("#member-count").textContent = `${data.members.length} thành viên`;
@@ -415,6 +436,14 @@ if (memberPage) {
         shareBox.hidden = true;
         document.querySelector(".dialog-submit").hidden = false;
         dialog.showModal();
+        if (workspaceMemberSelect) {
+            requestJson(`/workspaces/${memberPage.dataset.workspaceId}/members`).then((result) => {
+                workspaceMemberSelect.replaceChildren(new Option("Chọn thành viên có sẵn", ""));
+                result.members.filter((member) => !projectMemberIds.has(member.user_id)).forEach((member) => {
+                    workspaceMemberSelect.append(new Option(`${member.display_name || member.username} (${member.email || ""})`, member.user_id));
+                });
+            }).catch(() => {});
+        }
         inviteEmail.focus();
     });
     document.querySelector("[data-close-dialog]").addEventListener("click", () => dialog.close());
@@ -427,6 +456,18 @@ if (memberPage) {
         const submit = inviteForm.querySelector(".dialog-submit");
         submit.disabled = true;
         try {
+            const selectedUserId = workspaceMemberSelect?.value;
+            if (selectedUserId) {
+                await requestJson(memberUrl, {
+                    method: "POST",
+                    headers: csrfHeaders(),
+                    body: JSON.stringify({ user_id: Number(selectedUserId), role: "member" }),
+                });
+                dialog.close();
+                await loadMembers();
+                showNotice("Đã thêm thành viên vào Project.");
+                return;
+            }
             const result = await requestJson(inviteUrl, {
                 method: "POST",
                 headers: csrfHeaders(),
