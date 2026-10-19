@@ -1,11 +1,12 @@
 from datetime import date
 
-from flask import g, jsonify, request
+from flask import g, jsonify, render_template, request
 from werkzeug.exceptions import BadRequest, UnsupportedMediaType
 
 from app.auth.decorators import login_required
 from app.auth.responses import api_error
 from app.auth.validation import ValidationError
+from app.services.my_tasks_service import list_my_tasks
 from app.services.task_service import (
     InsufficientRoleError,
     InvalidAssigneeError,
@@ -17,13 +18,18 @@ from app.services.task_service import (
     delete_task,
     get_task,
     list_tasks,
+    reorder_tasks,
     update_task,
 )
-from app.tasks import bp
+from app.tasks import bp, page_bp
 
 
-TASK_FIELDS = {"title", "description", "status", "assignee_id", "due_date"}
-TASK_STATUSES = {"todo", "in_progress", "done"}
+TASK_FIELDS = {
+    "title", "description", "status", "priority", "assignee_id", "sprint_id",
+    "due_date", "position",
+}
+TASK_STATUSES = {"todo", "in_progress", "review", "done"}
+TASK_PRIORITIES = {"low", "medium", "high"}
 MAX_ID = 9223372036854775807
 
 
@@ -38,7 +44,8 @@ def read_json_object():
 
 def validate_task_payload(data, partial=False):
     errors = {}
-    unknown_fields = set(data) - TASK_FIELDS
+    allowed_fields = TASK_FIELDS if partial else TASK_FIELDS - {"position"}
+    unknown_fields = set(data) - allowed_fields
     if unknown_fields:
         errors.update({
             field: "Trường này không được hỗ trợ."
@@ -73,6 +80,13 @@ def validate_task_payload(data, partial=False):
         else:
             values["status"] = status
 
+    if "priority" in data:
+        priority = data["priority"]
+        if not isinstance(priority, str) or priority not in TASK_PRIORITIES:
+            errors["priority"] = "Mức ưu tiên task không hợp lệ."
+        else:
+            values["priority"] = priority
+
     if "assignee_id" in data:
         assignee_id = data["assignee_id"]
         if assignee_id is not None and (
@@ -84,6 +98,22 @@ def validate_task_payload(data, partial=False):
             )
         else:
             values["assignee_id"] = assignee_id
+
+    if "position" in data:
+        position = data["position"]
+        if type(position) is not int or not 0 <= position <= MAX_ID:
+            errors["position"] = "Vị trí task phải là số nguyên không âm."
+        else:
+            values["position"] = position
+
+    if "sprint_id" in data:
+        sprint_id = data["sprint_id"]
+        if sprint_id is not None and (
+            type(sprint_id) is not int or not 0 < sprint_id <= MAX_ID
+        ):
+            errors["sprint_id"] = "ID Sprint phải là số nguyên dương hoặc null."
+        else:
+            values["sprint_id"] = sprint_id
 
     if "due_date" in data:
         due_date = data["due_date"]
@@ -186,6 +216,18 @@ def index(workspace_id, project_id):
     return jsonify(tasks=[dict(task) for task in tasks]), 200
 
 
+@bp.post("/reorder")
+@login_required
+def reorder(workspace_id, project_id):
+    data = read_json_object()
+    if set(data) != {"columns"} or not isinstance(data["columns"], dict):
+        raise ValidationError({"columns": "Cần cung cấp thứ tự task theo từng cột."})
+    tasks = reorder_tasks(
+        workspace_id, project_id, g.user["id"], data["columns"]
+    )
+    return jsonify(tasks=[dict(task) for task in tasks]), 200
+
+
 @bp.post("")
 @login_required
 def create(workspace_id, project_id):
@@ -199,6 +241,8 @@ def create(workspace_id, project_id):
         assignee_id=values.get("assignee_id"),
         status=values.get("status", "todo"),
         due_date=values.get("due_date"),
+        priority=values.get("priority", "medium"),
+        sprint_id=values.get("sprint_id"),
     )
     return jsonify(task=dict(task)), 201
 
@@ -225,3 +269,25 @@ def update(workspace_id, project_id, task_id):
 def delete(workspace_id, project_id, task_id):
     delete_task(workspace_id, project_id, g.user["id"], task_id)
     return jsonify(message="Task đã được xóa."), 200
+
+
+@page_bp.after_request
+def no_store_my_tasks_api(response):
+    if request.path == "/tasks/api/my":
+        response.headers["Cache-Control"] = "no-store"
+    return response
+
+
+@page_bp.get("/my")
+@login_required
+def my_tasks_page():
+    return render_template("tasks/my.html")
+
+
+@page_bp.get("/api/my")
+@login_required
+def my_tasks_api():
+    avatar_url = "/auth/me/avatar" if g.user["avatar_path"] else None
+    response = jsonify(tasks=list_my_tasks(g.user["id"], avatar_url))
+    response.headers["Cache-Control"] = "no-store"
+    return response, 200

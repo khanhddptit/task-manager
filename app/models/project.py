@@ -106,7 +106,7 @@ def get_workspace_member_role(workspace_id, user_id):
 def get_project_member(project_id, user_id):
     return get_db().execute(
         """SELECT pm.project_id, pm.workspace_id, pm.user_id,
-                  u.username, pm.role, pm.joined_at
+                  u.username, u.display_name, u.email, pm.role, pm.joined_at
            FROM project_member AS pm
            JOIN user AS u ON u.id = pm.user_id
            WHERE pm.project_id = ? AND pm.user_id = ?""",
@@ -125,7 +125,8 @@ def get_project_member_role(project_id, user_id):
 
 def get_project_members(project_id):
     return get_db().execute(
-        """SELECT u.id, u.username, pm.role, pm.joined_at
+        """SELECT u.id, u.username, u.display_name, u.email, pm.role,
+                  pm.joined_at
            FROM project_member AS pm
            JOIN user AS u ON u.id = pm.user_id
            WHERE pm.project_id = ?

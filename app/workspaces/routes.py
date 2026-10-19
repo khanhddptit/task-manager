@@ -4,6 +4,14 @@ from werkzeug.exceptions import BadRequest, UnsupportedMediaType
 from app.auth.decorators import login_required
 from app.auth.responses import api_error
 from app.auth.validation import ValidationError
+from app.services.member_invitation_service import (
+    MemberInvitationError,
+    accept_member_invitation,
+    create_member_invitation,
+    list_member_invitations,
+    resend_member_invitation,
+    revoke_member_invitation,
+)
 from app.services.workspace_service import (
     WorkspaceServiceError,
     add_workspace_member,
@@ -93,6 +101,11 @@ def workspace_service_error(error):
     return jsonify(error=error.as_dict()), error.status
 
 
+@bp.errorhandler(MemberInvitationError)
+def member_invitation_error(error):
+    return jsonify(error=error.as_dict()), error.status
+
+
 @bp.post("")
 @login_required
 def create():
@@ -133,8 +146,67 @@ def delete(workspace_id):
 @bp.get("/<int:workspace_id>/members")
 @login_required
 def members(workspace_id):
+    workspace = get_workspace_for_user(workspace_id, g.user["id"])
     result = list_workspace_members(workspace_id, g.user["id"])
-    return jsonify(members=[dict(member) for member in result])
+    return jsonify(
+        members=[dict(member) for member in result],
+        can_manage=workspace["role"] in {"owner", "admin"},
+        can_manage_admins=workspace["role"] == "owner",
+        current_user_id=g.user["id"],
+    )
+
+
+@bp.get("/<int:workspace_id>/members/invitations")
+@login_required
+def member_invitations(workspace_id):
+    result = list_member_invitations(workspace_id, None, g.user["id"])
+    return jsonify(invitations=[dict(invitation) for invitation in result])
+
+
+@bp.post("/<int:workspace_id>/members/invitations")
+@login_required
+def create_member_invite(workspace_id):
+    data = read_json_object()
+    errors = {
+        field: "Trường này không được hỗ trợ."
+        for field in set(data) - {"email"}
+    }
+    if "email" not in data:
+        errors["email"] = "Vui lòng cung cấp email thành viên."
+    if errors:
+        raise ValidationError(errors)
+    invitation = create_member_invitation(
+        workspace_id, None, g.user["id"], data["email"]
+    )
+    return jsonify(invitation=invitation), 201
+
+
+@bp.post("/<int:workspace_id>/members/invitations/<int:invitation_id>/resend")
+@login_required
+def resend_member_invite(workspace_id, invitation_id):
+    invitation = resend_member_invitation(
+        workspace_id, None, g.user["id"], invitation_id
+    )
+    return jsonify(invitation=invitation)
+
+
+@bp.delete("/<int:workspace_id>/members/invitations/<int:invitation_id>")
+@login_required
+def revoke_member_invite(workspace_id, invitation_id):
+    result = revoke_member_invitation(
+        workspace_id, None, g.user["id"], invitation_id
+    )
+    return jsonify(**result)
+
+
+@bp.post("/invitations/accept")
+@login_required
+def accept_invitation():
+    data = read_json_object()
+    if set(data) != {"token"}:
+        raise ValidationError({"token": "Vui lòng cung cấp token lời mời."})
+    result = accept_member_invitation(data["token"], g.user["id"])
+    return jsonify(**result)
 
 
 @bp.post("/<int:workspace_id>/members")

@@ -1,0 +1,35 @@
+<!doctype html>
+<html lang="vi">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="theme-color" content="#17191d">
+    <title>Tiến độ Sprint | Kairo</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Manrope:wght@500;600;700;800&display=swap" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/kanban.css', v=6) }}"><link rel="stylesheet" href="{{ url_for('static', filename='css/sprints.css', v=1) }}"><link rel="stylesheet" href="{{ url_for('static', filename='css/notifications.css', v=2) }}">
+</head>
+<body class="kanban-page sprint-page" data-page="progress">
+    <aside class="sidebar" aria-label="Thanh bên">
+        <a class="sidebar-brand" href="{{ url_for('main.index') }}"><span class="sidebar-brand-icon"><i class="bi bi-layers-fill" aria-hidden="true"></i></span><span><strong>Kairo</strong><small>PROJECT WORKSPACE</small></span></a>
+        <div class="workspace-picker"><div class="workspace-switcher"><span class="workspace-avatar">K</span><span class="workspace-copy"><strong id="workspace-name">Workspace</strong><small id="workspace-role">Project</small></span></div></div>
+        <nav class="primary-nav" aria-label="Điều hướng workspace"><a href="{{ url_for('tasks.index') }}" class="nav-link"><i class="bi bi-kanban" aria-hidden="true"></i><span>Bảng công việc</span></a><a href="{{ url_for('main.sprint_progress') }}" class="nav-link active"><i class="bi bi-bar-chart" aria-hidden="true"></i><span>Tiến độ</span></a></nav>
+        <div class="project-heading"><span>Dự án</span></div><div class="project-tree"><div class="tree-project"><i class="bi bi-chevron-down" aria-hidden="true"></i><span class="project-dot"></span><strong id="project-name">Project</strong></div><a class="tree-item" id="sprint-nav-link" href="{{ url_for('main.sprints') }}"><i class="bi bi-lightning-charge" aria-hidden="true"></i><span>Sprint</span></a></div>
+        <a class="profile-button" href="{{ url_for('main.user_settings') }}"><span class="profile-avatar" id="user-avatar">K</span><span class="profile-copy"><strong id="user-name">Tài khoản</strong><small id="user-email"></small></span><i class="bi bi-chevron-down" aria-hidden="true"></i></a>
+    </aside>
+    <div class="app-shell"><header class="topbar"><div class="breadcrumbs"><span class="breadcrumb-dot"></span><span id="breadcrumb-project">Project</span><i class="bi bi-chevron-right" aria-hidden="true"></i><span class="breadcrumb-current">Tiến độ Sprint</span></div><div class="topbar-actions"><button type="button" class="topbar-icon" id="theme-toggle" aria-label="Đổi giao diện"><i class="bi bi-moon" aria-hidden="true"></i></button>{% include 'partials/notifications.html' %}</div></header>
+        <main class="sprint-main progress-main"><section class="sprint-heading"><div><p class="project-overline">PROJECT / ANALYTICS</p><h1>Tiến độ Sprint</h1><p class="sprint-subtitle">Theo dõi trạng thái công việc và biểu đồ burndown theo thời gian.</p></div><a class="secondary-button sprint-back-link" id="back-to-sprints" href="{{ url_for('main.sprints') }}"><i class="bi bi-arrow-left" aria-hidden="true"></i> Danh sách Sprint</a></section>
+            <div class="sprint-toolbar"><label for="project-select"><i class="bi bi-folder2" aria-hidden="true"></i><span>Dự án</span><select id="project-select" aria-label="Chọn dự án"></select></label><label for="sprint-select"><i class="bi bi-lightning-charge" aria-hidden="true"></i><span>Sprint</span><select id="sprint-select" aria-label="Chọn Sprint"><option value="">Chọn Sprint</option></select></label></div>
+            <div class="sprint-notice" id="sprint-notice" role="status" hidden></div>
+            <section id="progress-content" hidden>
+                <div class="progress-title-row"><div><span class="sprint-status-pill" id="progress-status"></span><h2 id="progress-name"></h2><p id="progress-goal"></p></div><div class="sprint-date-range" id="progress-dates"></div></div>
+                <div class="progress-stat-grid"><article class="progress-stat"><span>Task tổng</span><strong id="stat-total">0</strong><small><i class="bi bi-layers" aria-hidden="true"></i> Trong Sprint</small></article><article class="progress-stat"><span>Hoàn thành</span><strong id="stat-done">0%</strong><small id="stat-done-count">0 task hoàn tất</small></article><article class="progress-stat"><span>Đang review</span><strong id="stat-review">0</strong><small>Chờ kiểm tra</small></article><article class="progress-stat"><span>Quá hạn</span><strong id="stat-overdue">0</strong><small>Task chưa hoàn thành</small></article></div>
+                <section class="progress-panel"><div class="progress-panel-heading"><div><h2>Burndown chart</h2><p>Số task còn lại so với tiến độ lý tưởng</p></div><div class="chart-legend"><span><i class="legend-actual"></i>Thực tế</span><span><i class="legend-ideal"></i>Lý tưởng</span></div></div><div class="burndown-chart" id="burndown-chart" role="img" aria-label="Biểu đồ số task còn lại theo ngày"></div></section>
+                <div class="progress-columns"><section class="progress-panel status-panel"><div class="progress-panel-heading"><div><h2>Trạng thái công việc</h2><p>Phân bố task theo trạng thái hiện tại</p></div></div><div class="status-breakdown" id="status-breakdown"></div></section><section class="progress-panel overdue-panel"><div class="progress-panel-heading"><div><h2>Task quá hạn</h2><p>Cần được theo dõi</p></div></div><div class="overdue-list" id="overdue-list"></div></section></div>
+            </section>
+            <div class="sprint-empty" id="progress-empty"><span><i class="bi bi-bar-chart-line" aria-hidden="true"></i></span><h2>Chọn Sprint để xem tiến độ</h2><p>Biểu đồ và thống kê sẽ xuất hiện khi bạn chọn một Sprint của dự án.</p></div>
+        </main>
+    </div><div class="toast-message" id="toast-message" role="status" aria-live="polite"></div><script src="{{ url_for('static', filename='js/sprints.js', v=1) }}" defer></script><script src="{{ url_for('static', filename='js/notifications.js', v=6) }}" defer></script>
+</body>
+</html>

@@ -1,0 +1,14 @@
+<div class="notification-wrap">
+    <button type="button" class="topbar-icon notification-toggle" id="notification-toggle" aria-label="Thông báo" aria-expanded="false" aria-controls="notification-panel">
+        <i class="bi bi-bell" aria-hidden="true"></i>
+        <span class="notification-badge" id="notification-badge" hidden></span>
+    </button>
+    <section class="notification-panel" id="notification-panel" aria-label="Thông báo" hidden>
+        <header class="notification-panel-heading">
+            <div><h2>Thông báo</h2><span id="notification-summary">Mới nhất</span></div>
+            <div class="notification-actions"><button type="button" id="notification-read-all">Đánh dấu đã đọc</button><button type="button" id="notification-clear-read" disabled>Xóa đã đọc</button></div>
+        </header>
+        <div class="notification-list" id="notification-list" aria-live="polite"></div>
+        <p class="notification-empty" id="notification-empty" hidden>Bạn chưa có thông báo nào.</p>
+    </section>
+</div>

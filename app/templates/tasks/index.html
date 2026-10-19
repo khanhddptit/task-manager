@@ -1,14 +1,172 @@
-{% extends "base.html" %}
-{% block title %}Công việc | Task Manager{% endblock %}
-{% block content %}
-<h1 class="h2">Công việc</h1>
-<div class="card border-0 shadow-sm mt-4">
-    <div class="card-body p-4">
-        <h2 class="h5">Module sẵn sàng để phát triển</h2>
-        <p class="mb-0 text-secondary">
-            Đây là trang mẫu, chưa truy vấn dữ liệu công việc.
-            Team sẽ bổ sung đăng nhập, phân quyền và chức năng thêm, xem, sửa, xóa công việc.
-        </p>
+<!doctype html>
+<html lang="vi">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="theme-color" content="#17191d">
+    <title>Bảng Kanban | Kairo</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Manrope:wght@500;600;700;800&display=swap" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/kanban.css', v=14) }}"><link rel="stylesheet" href="{{ url_for('static', filename='css/notifications.css', v=2) }}">
+</head>
+<body class="kanban-page">
+    <a class="skip-link" href="#board-main">Đến nội dung chính</a>
+    <aside class="sidebar" aria-label="Thanh bên">
+        <a class="sidebar-brand" href="{{ url_for('main.index') }}">
+            <span class="sidebar-brand-icon"><i class="bi bi-layers-fill" aria-hidden="true"></i></span>
+            <span><strong>Kairo</strong><small>PROJECT WORKSPACE</small></span>
+        </a>
+
+        <div class="workspace-picker">
+            <button class="workspace-switcher" type="button" id="workspace-switcher" aria-label="Chọn workspace" aria-expanded="false" aria-controls="workspace-menu">
+                <span class="workspace-avatar">KS</span>
+                <span class="workspace-copy"><strong>Kairo Studio</strong><small>Chủ sở hữu</small></span>
+                <i class="bi bi-chevron-down" aria-hidden="true"></i>
+            </button>
+            <div class="workspace-menu" id="workspace-menu" hidden></div>
+        </div>
+
+        <nav class="primary-nav" aria-label="Điều hướng workspace">
+            <a href="{{ url_for('tasks.my_tasks_page') }}" class="nav-link" id="my-tasks-link"><i class="bi bi-check2-square" aria-hidden="true"></i><span>Việc của tôi</span><span class="nav-count" id="my-task-count" hidden>0</span></a>
+            <a href="{{ url_for('main.sprint_progress') }}" class="nav-link" id="progress-link"><i class="bi bi-bar-chart" aria-hidden="true"></i><span>Tiến độ</span></a>
+            <a href="{{ url_for('main.member_directory') }}" class="nav-link" id="workspace-members-link"><i class="bi bi-people" aria-hidden="true"></i><span>Thành viên</span></a>
+            <a href="#board-main" class="nav-link active"><i class="bi bi-folder2" aria-hidden="true"></i><span>Dự án</span></a>
+        </nav>
+
+        <div class="project-heading"><span>Dự án</span><button type="button" aria-label="Tạo dự án" class="icon-button" id="project-create-button"><i class="bi bi-plus-lg" aria-hidden="true"></i></button></div>
+        <div class="project-tree">
+            <button class="tree-project" type="button" id="project-switcher" aria-expanded="false" aria-controls="project-menu"><i class="bi bi-chevron-down" aria-hidden="true"></i><span class="project-dot"></span><strong>Stride</strong><small>TP</small></button>
+            <div class="project-menu" id="project-menu" hidden></div>
+            <a class="tree-item selected" href="{{ url_for('tasks.index') }}"><i class="bi bi-list-task" aria-hidden="true"></i><span>Task</span></a>
+            <a class="tree-item" id="project-members-link" href="{{ url_for('main.member_directory') }}"><i class="bi bi-people" aria-hidden="true"></i><span>Thành viên</span></a>
+            <a class="tree-item" id="sprint-link" href="{{ url_for('main.sprints') }}"><i class="bi bi-lightning-charge" aria-hidden="true"></i><span>Sprint</span></a>
+        </div>
+
+        <a class="profile-button" href="{{ url_for('main.user_settings') }}" aria-label="Mở cài đặt tài khoản">
+            <span class="profile-avatar">ĐK</span>
+            <span class="profile-copy"><strong>Đặng Duy Khánh</strong><small>dkhanh0512@gmail.com</small></span>
+            <i class="bi bi-chevron-down" aria-hidden="true"></i>
+        </a>
+    </aside>
+
+    <div class="app-shell">
+        <header class="topbar">
+            <div class="breadcrumbs"><span class="breadcrumb-dot"></span><span>Stride</span><i class="bi bi-chevron-right" aria-hidden="true"></i><span class="breadcrumb-current">Bảng Kanban</span></div>
+            <div class="topbar-actions"><button type="button" class="topbar-icon" aria-label="Đổi giao diện"><i class="bi bi-moon" aria-hidden="true"></i></button>{% include 'partials/notifications.html' %}</div>
+        </header>
+
+        <main class="board-main" id="board-main">
+            <p class="sr-only">Bảng Kanban của dự án hiện tại.</p>
+            <section class="board-heading" aria-labelledby="project-title">
+                <div><p class="project-overline">WORKSPACE <span>/</span> PROJECT</p><h1 id="project-title">Stride</h1><p class="project-summary"><span>TP</span><span class="summary-separator">·</span><span id="task-total">2 task</span></p></div>
+                <div class="heading-actions">
+                    <button class="primary-button" type="button" data-add-task="todo"><i class="bi bi-plus-lg" aria-hidden="true"></i> Task mới</button>
+                    <div class="view-switch" role="group" aria-label="Chế độ xem">
+                        <button type="button" class="view-button active" data-view="board" aria-pressed="true"><i class="bi bi-kanban" aria-hidden="true"></i> Bảng</button>
+                        <button type="button" class="view-button" data-view="list" aria-pressed="false"><i class="bi bi-list-ul" aria-hidden="true"></i> Danh sách</button>
+                    </div>
+                    <div class="more-wrap"><button type="button" class="icon-button more-button" aria-label="Thao tác khác" aria-expanded="false"><i class="bi bi-three-dots" aria-hidden="true"></i></button><div class="more-menu" hidden><button type="button" data-action="toggle-done">Ẩn/hiện cột Done</button><button type="button" data-action="reset">Khôi phục demo</button></div></div>
+                </div>
+            </section>
+
+            <div class="toolbar">
+                <span class="toolbar-label">HIỂN THỊ</span>
+                <label class="filter-control"><i class="bi bi-funnel" aria-hidden="true"></i><span>Lọc</span><select id="status-filter" aria-label="Lọc theo trạng thái"><option value="all">Tất cả task</option><option value="todo">To Do</option><option value="in_progress">In Progress</option><option value="review">Review</option><option value="done">Done</option></select><i class="bi bi-chevron-down chevron" aria-hidden="true"></i></label>
+                <label class="filter-control"><i class="bi bi-person" aria-hidden="true"></i><span>Người phụ trách</span><select id="assignee-filter" aria-label="Lọc theo người phụ trách"><option value="all">Tất cả thành viên</option><option value="dk">Đặng Duy Khánh</option><option value="unassigned">Chưa giao</option></select><i class="bi bi-chevron-down chevron" aria-hidden="true"></i></label>
+                <button class="filter-control sort-button" type="button" id="sort-button"><i class="bi bi-arrow-down-up" aria-hidden="true"></i><span>Thứ tự</span><i class="bi bi-chevron-down chevron" aria-hidden="true"></i></button>
+                <span class="toolbar-spacer"></span><span class="demo-badge"><span class="demo-dot"></span><strong id="demo-badge-label">BẢN DEMO</strong></span>
+            </div>
+
+            <section class="kanban-board" id="kanban-board" aria-label="Bảng công việc">
+                <section class="kanban-column" data-column="todo" aria-labelledby="todo-title">
+                    <header class="column-header"><span class="status-dot todo-dot"></span><h2 id="todo-title">To Do</h2><span class="default-chip">Mặc định</span><span class="column-count">1</span><button class="column-add" type="button" data-add-task="todo" aria-label="Thêm task vào To Do"><i class="bi bi-plus-lg" aria-hidden="true"></i></button></header>
+                    <div class="task-list" data-status="todo">
+                        <article class="task-card overdue-card" data-task-id="TP-1" data-status="todo" data-assignee="dk" data-priority="medium" tabindex="0">
+                            <div class="task-card-top"><span class="task-id">TP-1</span><button class="task-menu" type="button" aria-label="Xem chi tiết TP-1"><i class="bi bi-three-dots" aria-hidden="true"></i></button></div>
+                            <h3>websocket</h3>
+                            <div class="task-meta"><span class="priority medium"><i></i> Medium</span><span class="due-date overdue"><i class="bi bi-exclamation-triangle" aria-hidden="true"></i> 23/09 · trễ 26n</span><span class="task-assignee" title="Đặng Duy Khánh">ĐK</span></div>
+                        </article>
+                        <button class="empty-add" type="button" data-add-task="todo"><i class="bi bi-plus" aria-hidden="true"></i> Thêm task</button>
+                    </div>
+                </section>
+
+                <section class="kanban-column" data-column="in_progress" aria-labelledby="progress-title">
+                    <header class="column-header"><span class="status-dot progress-dot"></span><h2 id="progress-title">In Progress</h2><span class="column-count">0</span><button class="column-add" type="button" data-add-task="in_progress" aria-label="Thêm task vào In Progress"><i class="bi bi-plus-lg" aria-hidden="true"></i></button></header>
+                    <div class="task-list" data-status="in_progress"><button class="empty-add" type="button" data-add-task="in_progress"><i class="bi bi-plus" aria-hidden="true"></i> Thêm task</button></div>
+                </section>
+
+                <section class="kanban-column" data-column="review" aria-labelledby="review-title">
+                    <header class="column-header"><span class="status-dot review-dot"></span><h2 id="review-title">Review</h2><span class="column-count">1</span><button class="column-add" type="button" data-add-task="review" aria-label="Thêm task vào Review"><i class="bi bi-plus-lg" aria-hidden="true"></i></button></header>
+                    <div class="task-list" data-status="review">
+                        <article class="task-card" data-task-id="TP-2" data-status="review" data-assignee="unassigned" data-priority="high" tabindex="0">
+                            <div class="task-card-top"><span class="task-id">TP-2</span><button class="task-menu" type="button" aria-label="Xem chi tiết TP-2"><i class="bi bi-three-dots" aria-hidden="true"></i></button></div>
+                            <h3>test task</h3>
+                            <div class="task-meta"><span class="priority high"><i></i> High</span></div>
+                        </article>
+                        <button class="empty-add" type="button" data-add-task="review"><i class="bi bi-plus" aria-hidden="true"></i> Thêm task</button>
+                    </div>
+                </section>
+
+                <section class="kanban-column" data-column="done" aria-labelledby="done-title">
+                    <header class="column-header"><span class="status-dot done-dot"></span><h2 id="done-title">Done</h2><span class="column-count">0</span><button class="column-add" type="button" data-add-task="done" aria-label="Thêm task vào Done"><i class="bi bi-plus-lg" aria-hidden="true"></i></button></header>
+                    <div class="task-list" data-status="done"><button class="empty-add" type="button" data-add-task="done"><i class="bi bi-plus" aria-hidden="true"></i> Thêm task</button></div>
+                </section>
+            </section>
+
+            <section class="list-view" id="list-view" hidden aria-label="Danh sách công việc">
+                <div class="list-header"><span>Task</span><span>Trạng thái</span><span>Ưu tiên</span><span>Người phụ trách</span></div>
+                <div id="task-table-body"></div>
+            </section>
+        </main>
     </div>
-</div>
-{% endblock %}
+
+    <dialog class="task-detail-dialog" id="task-detail-dialog" aria-labelledby="task-detail-title">
+        <div class="task-detail-content">
+            <header class="task-detail-heading"><div><p id="task-detail-id">TASK</p><h2 id="task-detail-title"></h2></div><button type="button" class="dialog-close" data-detail-close aria-label="Đóng"><i class="bi bi-x-lg" aria-hidden="true"></i></button></header>
+            <p class="task-detail-description" id="task-detail-description"></p>
+            <div class="task-detail-grid">
+                <div><span>Trạng thái</span><strong id="task-detail-status"></strong></div>
+                <div><span>Ưu tiên</span><strong id="task-detail-priority"></strong></div>
+                <div><span>Người phụ trách</span><strong id="task-detail-assignee"></strong></div>
+                <div><span>Hạn hoàn thành</span><strong id="task-detail-due"></strong></div>
+                <div class="task-detail-sprint-row"><span>Sprint</span><strong id="task-detail-sprint"></strong></div>
+            </div>
+            <section class="task-comments" id="task-comments">
+                <div class="task-comments-heading"><h3>Bình luận</h3><span id="task-comment-count">0</span></div>
+                <div class="task-comment-list" id="task-comment-list" aria-live="polite"></div>
+                <form id="task-comment-form"><label for="task-comment-input">Thêm bình luận</label><textarea id="task-comment-input" name="content" rows="3" maxlength="5000" placeholder="Viết bình luận cho task…" required></textarea><p class="task-comment-error" id="task-comment-error" role="alert" hidden></p><button type="submit" class="secondary-button">Gửi bình luận</button></form>
+            </section>
+            <div class="task-detail-actions"><button type="button" class="secondary-button" data-detail-close>Đóng</button><button type="button" class="primary-button" id="task-detail-edit"><i class="bi bi-pencil" aria-hidden="true"></i> Chỉnh sửa</button></div>
+        </div>
+    </dialog>
+
+    <dialog class="task-dialog project-create-dialog" id="project-dialog" aria-labelledby="project-dialog-title">
+        <form id="project-form" method="dialog">
+            <div class="dialog-heading"><div><p>WORKSPACE / PROJECT</p><h2 id="project-dialog-title">Tạo dự án</h2></div><button type="button" class="dialog-close" data-project-close aria-label="Đóng"><i class="bi bi-x-lg" aria-hidden="true"></i></button></div>
+            <label class="dialog-field">Tên dự án<input name="name" maxlength="100" required placeholder="Ví dụ: Stride"></label>
+            <label class="dialog-field">Mô tả<textarea name="description" rows="3" maxlength="2000" placeholder="Mục tiêu và phạm vi dự án"></textarea></label>
+            <p class="project-form-error" id="project-form-error" role="alert" hidden></p>
+            <div class="dialog-actions"><span class="dialog-actions-spacer"></span><button type="button" class="secondary-button" data-project-close>Hủy</button><button type="submit" class="primary-button" id="project-submit">Tạo dự án</button></div>
+        </form>
+    </dialog>
+
+    <dialog class="task-dialog" id="task-dialog" aria-labelledby="dialog-title">
+        <form id="new-task-form" method="dialog">
+            <div class="dialog-heading"><div><p id="dialog-project-label">PROJECT / STRIDE</p><h2 id="dialog-title">Tạo task mới</h2></div><button type="button" class="dialog-close" aria-label="Đóng"><i class="bi bi-x-lg" aria-hidden="true"></i></button></div>
+            <label class="dialog-field">Tên task<input name="title" maxlength="255" required placeholder="Ví dụ: Hoàn thiện trang dashboard"></label>
+            <label class="dialog-field">Mô tả<textarea name="description" rows="3" placeholder="Mô tả ngắn về công việc"></textarea></label>
+            <div class="dialog-grid"><label class="dialog-field">Trạng thái<select name="status"><option value="todo">To Do</option><option value="in_progress">In Progress</option><option value="review">Review</option><option value="done">Done</option></select></label><label class="dialog-field">Ưu tiên<select name="priority"><option value="low">Low</option><option value="medium" selected>Medium</option><option value="high">High</option></select></label></div>
+            <div class="dialog-grid"><label class="dialog-field">Sprint<select name="sprint_id"><option value="none">Backlog / chưa có Sprint</option></select></label><label class="dialog-field">Người phụ trách<select name="assignee_id"><option value="unassigned">Chưa giao</option></select></label></div>
+            <label class="dialog-field">Hạn hoàn thành<input name="due_date" type="date"></label>
+            <div class="dialog-actions"><button type="button" class="text-button delete-task-button" id="delete-task" hidden>Xóa task</button><span class="dialog-actions-spacer"></span><button type="button" class="secondary-button dialog-cancel">Hủy</button><button type="submit" class="primary-button dialog-submit">Tạo task</button></div>
+            <p class="dialog-note" id="dialog-note">Bản demo: thay đổi sẽ được lưu tạm trong trình duyệt.</p>
+        </form>
+    </dialog>
+
+    <div class="toast-message" id="toast-message" role="status" aria-live="polite"></div>
+    <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.6/Sortable.min.js" defer></script>
+    <script src="{{ url_for('static', filename='js/kanban-demo.js', v=17) }}" defer></script>
+</body>
+</html>

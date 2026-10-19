@@ -126,6 +126,8 @@ def test_task_crud_and_project_member_read_access(app):
     assert created.json["task"]["title"] == "Prepare release"
     assert created.json["task"]["description"] == "Release checklist"
     assert created.json["task"]["status"] == "todo"
+    assert created.json["task"]["priority"] == "medium"
+    assert created.json["task"]["position"] == 1
     assert created.json["task"]["assignee_id"] == world["user_ids"]["member"]
     assert created.json["task"]["created_by"] == world["user_ids"]["owner"]
     task_id = created.json["task"]["id"]
@@ -136,12 +138,13 @@ def test_task_crud_and_project_member_read_access(app):
 
     updated = owner.patch(
         task_url(workspace_id, project_id, task_id),
-        json={"title": "Release", "status": "in_progress"},
+        json={"title": "Release", "status": "review", "priority": "high"},
         headers=owner_headers,
     )
     assert updated.status_code == 200
     assert updated.json["task"]["title"] == "Release"
-    assert updated.json["task"]["status"] == "in_progress"
+    assert updated.json["task"]["status"] == "review"
+    assert updated.json["task"]["priority"] == "high"
 
     deleted = owner.delete(
         task_url(workspace_id, project_id, task_id),
@@ -173,6 +176,94 @@ def test_task_list_filters_by_status_and_assignee(app):
     assert [task["id"] for task in response.json["tasks"]] == [
         world["assigned_task_id"]
     ]
+
+
+def test_admin_can_reorder_tasks_within_and_across_columns(app):
+    world = task_world(app)
+    admin, headers = make_client(app, "admin")
+    workspace_id = world["workspace_id"]
+    project_id = world["project_id"]
+    todo_second = insert_task(app, project_id, "Second todo")
+    todo_third = insert_task(app, project_id, "Third todo")
+    url = f"{task_collection_url(workspace_id, project_id)}/reorder"
+    empty_columns = {status: [] for status in ("todo", "in_progress", "review", "done")}
+
+    same_column = {**empty_columns, "todo": [todo_second, world["assigned_task_id"], todo_third]}
+    response = admin.post(url, json={"columns": same_column}, headers=headers)
+    assert response.status_code == 200
+    assert [task["id"] for task in response.json["tasks"] if task["status"] == "todo"] == [
+        todo_second, world["assigned_task_id"], todo_third,
+    ]
+    assert [task["position"] for task in response.json["tasks"] if task["status"] == "todo"] == [0, 1, 2]
+
+    cross_column = {
+        **empty_columns,
+        "todo": [todo_third],
+        "in_progress": [world["assigned_task_id"], todo_second],
+    }
+    response = admin.post(url, json={"columns": cross_column}, headers=headers)
+    assert response.status_code == 200
+    tasks_by_id = {task["id"]: task for task in response.json["tasks"]}
+    assert (tasks_by_id[world["assigned_task_id"]]["status"], tasks_by_id[world["assigned_task_id"]]["position"]) == ("in_progress", 0)
+    assert (tasks_by_id[todo_second]["status"], tasks_by_id[todo_second]["position"]) == ("in_progress", 1)
+    assert (tasks_by_id[todo_third]["status"], tasks_by_id[todo_third]["position"]) == ("todo", 0)
+
+
+def test_admin_can_patch_position_and_api_validates_it(app):
+    world = task_world(app)
+    admin, headers = make_client(app, "admin")
+    first = world["assigned_task_id"]
+    second = insert_task(app, world["project_id"], "Second task")
+    third = insert_task(app, world["project_id"], "Third task")
+    first_url = task_url(world["workspace_id"], world["project_id"], first)
+
+    invalid = admin.patch(first_url, json={"position": -1}, headers=headers)
+    assert invalid.status_code == 400
+    assert "position" in invalid.json["error"]["fields"]
+
+    moved = admin.patch(first_url, json={"position": 2}, headers=headers)
+    assert moved.status_code == 200
+    assert moved.json["task"]["position"] == 2
+    listing = admin.get(task_collection_url(world["workspace_id"], world["project_id"]))
+    todo_ids = [task["id"] for task in listing.json["tasks"] if task["status"] == "todo"]
+    assert todo_ids == [second, third, first]
+
+    moved_across = admin.patch(
+        first_url,
+        json={"status": "in_progress", "position": 0},
+        headers=headers,
+    )
+    assert moved_across.status_code == 200
+    assert moved_across.json["task"]["status"] == "in_progress"
+    assert moved_across.json["task"]["position"] == 0
+
+
+def test_members_can_change_status_but_cannot_edit_position(app):
+    world = task_world(app)
+    member, headers = make_client(app, "member")
+    task_id = world["assigned_task_id"]
+    url = task_url(world["workspace_id"], world["project_id"], task_id)
+
+    forbidden = member.patch(url, json={"position": 0}, headers=headers)
+    assert forbidden.status_code == 403
+    forbidden = member.patch(
+        url, json={"status": "done", "position": 0}, headers=headers
+    )
+    assert forbidden.status_code == 403
+
+    updated = member.patch(url, json={"status": "done"}, headers=headers)
+    assert updated.status_code == 200
+    assert updated.json["task"]["status"] == "done"
+    assert updated.json["task"]["position"] == 0
+
+    columns = {status: [] for status in ("todo", "in_progress", "review", "done")}
+    columns["done"] = [task_id]
+    denied_reorder = member.post(
+        f"{task_collection_url(world['workspace_id'], world['project_id'])}/reorder",
+        json={"columns": columns},
+        headers=headers,
+    )
+    assert denied_reorder.status_code == 403
 
 
 def test_member_can_only_change_status_of_assigned_task(app):
@@ -265,6 +356,10 @@ def test_task_payload_validation_returns_consistent_json_errors(app):
     response = admin.post(url, json={"title": "Valid", "status": "blocked"}, headers=headers)
     assert response.status_code == 400
     assert "status" in response.json["error"]["fields"]
+
+    response = admin.post(url, json={"title": "Valid", "priority": "urgent"}, headers=headers)
+    assert response.status_code == 400
+    assert "priority" in response.json["error"]["fields"]
 
     response = admin.patch(
         task_url(world["workspace_id"], world["project_id"], world["assigned_task_id"]),

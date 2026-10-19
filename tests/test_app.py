@@ -7,14 +7,23 @@ from app import create_app
 
 
 @pytest.mark.parametrize("path, text", [
-    ("/", "Quản lý công việc cùng nhóm"),
-    ("/tasks/", "Module sẵn sàng để phát triển"),
+    ("/", "Một nhịp làm việc rõ ràng hơn"),
+    ("/login", "Chào mừng trở lại"),
+    ("/register", "Tạo tài khoản"),
+    ("/settings", "Cài đặt tài khoản"),
+    ("/tasks/", "Bảng Kanban của dự án hiện tại."),
 ])
 def test_pages(client, path, text):
     response = client.get(path)
     assert response.status_code == 200
     assert text in response.get_data(as_text=True)
     assert 'lang="vi"' in response.get_data(as_text=True)
+
+
+def test_login_page_includes_csrf_token(client):
+    response = client.get("/login")
+    assert response.status_code == 200
+    assert 'name="csrf_token"' in response.get_data(as_text=True)
 
 
 def test_static_css(client):

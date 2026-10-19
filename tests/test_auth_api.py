@@ -24,6 +24,8 @@ def csrf_token(client):
 
 
 def post_json(client, path, **data):
+    if path == "/auth/register" and "username" in data and "email" not in data:
+        data["email"] = f"{str(data['username']).strip()}@example.test"
     return client.post(path, json=data, headers={"X-CSRFToken": csrf_token(client)})
 
 
@@ -47,7 +49,10 @@ def test_registration_hashes_password_and_requires_login(app, client):
     assert response.status_code == 201
     assert "Location" not in response.headers
     assert response.json["user"]["username"] == "new_user"
-    assert set(response.json["user"]) == {"id", "username", "created_at"}
+    assert set(response.json["user"]) == {
+        "id", "username", "display_name", "email", "avatar_url",
+        "password_login_enabled", "google_connected", "created_at"
+    }
     with app.app_context():
         user = get_user_by_username("new_user")
         assert user["password_hash"] != PASSWORD
@@ -93,7 +98,7 @@ def test_missing_fields(client, path):
     assert_error(response, 400, "validation_error")
     expected = {"username", "password"}
     if path == "/auth/register":
-        expected.add("confirm_password")
+        expected.update({"confirm_password", "email"})
     assert set(response.json["error"]["fields"]) == expected
 
 
@@ -146,14 +151,17 @@ def test_login_rotates_session_and_returns_new_csrf_token(app, client, user_id):
     cookie = response.headers["Set-Cookie"]
     assert "HttpOnly" in cookie and "SameSite=Lax" in cookie and "Expires=" in cookie
     with client.session_transaction() as stored:
-        assert set(stored) == {"user_id", "_permanent", "csrf_token"}
+        assert set(stored) == {"user_id", "auth_version", "_permanent", "csrf_token"}
         assert stored["user_id"] == user_id
         assert stored.permanent is True
     with client:
         response = client.get("/auth/me")
         assert response.status_code == 200
         assert response.json["user"]["id"] == user_id
-        assert set(response.json["user"]) == {"id", "username", "created_at"}
+        assert set(response.json["user"]) == {
+            "id", "username", "display_name", "email", "avatar_url",
+            "password_login_enabled", "google_connected", "created_at"
+        }
         assert "password_hash" not in g.user.keys()
     assert app.config["PERMANENT_SESSION_LIFETIME"] == timedelta(hours=8)
     assert app.config["SESSION_REFRESH_EACH_REQUEST"] is True

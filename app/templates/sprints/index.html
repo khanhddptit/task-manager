@@ -1,0 +1,47 @@
+<!doctype html>
+<html lang="vi">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="theme-color" content="#17191d">
+    <title>Sprint | Kairo</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Manrope:wght@500;600;700;800&display=swap" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/kanban.css', v=6) }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/sprints.css', v=1) }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/notifications.css', v=2) }}">
+</head>
+<body class="kanban-page sprint-page" data-page="sprints">
+    <aside class="sidebar" aria-label="Thanh bên">
+        <a class="sidebar-brand" href="{{ url_for('main.index') }}"><span class="sidebar-brand-icon"><i class="bi bi-layers-fill" aria-hidden="true"></i></span><span><strong>Kairo</strong><small>PROJECT WORKSPACE</small></span></a>
+        <div class="workspace-picker"><div class="workspace-switcher"><span class="workspace-avatar">K</span><span class="workspace-copy"><strong id="workspace-name">Workspace</strong><small id="workspace-role">Project</small></span></div></div>
+        <nav class="primary-nav" aria-label="Điều hướng workspace">
+            <a href="{{ url_for('tasks.index') }}" class="nav-link"><i class="bi bi-kanban" aria-hidden="true"></i><span>Bảng công việc</span></a>
+            <a href="{{ url_for('main.sprint_progress') }}" class="nav-link" id="progress-nav-link"><i class="bi bi-bar-chart" aria-hidden="true"></i><span>Tiến độ</span></a>
+        </nav>
+        <div class="project-heading"><span>Dự án</span></div>
+        <div class="project-tree"><div class="tree-project"><i class="bi bi-chevron-down" aria-hidden="true"></i><span class="project-dot"></span><strong id="project-name">Project</strong></div><a class="tree-item selected" href="#sprint-list"><i class="bi bi-lightning-charge" aria-hidden="true"></i><span>Sprint</span></a></div>
+        <a class="profile-button" href="{{ url_for('main.user_settings') }}"><span class="profile-avatar" id="user-avatar">K</span><span class="profile-copy"><strong id="user-name">Tài khoản</strong><small id="user-email"></small></span><i class="bi bi-chevron-down" aria-hidden="true"></i></a>
+    </aside>
+    <div class="app-shell">
+        <header class="topbar"><div class="breadcrumbs"><span class="breadcrumb-dot"></span><span id="breadcrumb-project">Project</span><i class="bi bi-chevron-right" aria-hidden="true"></i><span class="breadcrumb-current">Sprint</span></div><div class="topbar-actions"><button type="button" class="topbar-icon" id="theme-toggle" aria-label="Đổi giao diện"><i class="bi bi-moon" aria-hidden="true"></i></button>{% include 'partials/notifications.html' %}</div></header>
+        <main class="sprint-main" id="sprint-list">
+            <section class="sprint-heading"><div><p class="project-overline">PROJECT / DELIVERY</p><h1>Sprint</h1><p class="sprint-subtitle">Lập kế hoạch, theo dõi tiến độ và xem các mốc hoàn thành của dự án.</p></div><button class="primary-button" id="create-sprint" type="button"><i class="bi bi-plus-lg" aria-hidden="true"></i> Tạo Sprint</button></section>
+            <div class="sprint-toolbar"><label for="project-select"><i class="bi bi-folder2" aria-hidden="true"></i><span>Dự án</span><select id="project-select" aria-label="Chọn dự án"></select></label><span class="sprint-toolbar-note" id="sprint-count">Đang tải Sprint…</span></div>
+            <div class="sprint-notice" id="sprint-notice" role="status" hidden></div>
+            <section class="sprint-groups" aria-live="polite">
+                <div class="sprint-group"><div class="sprint-group-heading"><span class="sprint-state-dot active-dot"></span><h2>Đang diễn ra</h2><span class="sprint-group-count" id="active-count">0</span></div><div class="sprint-card-grid" id="active-sprints"></div></div>
+                <div class="sprint-group"><div class="sprint-group-heading"><span class="sprint-state-dot planned-dot"></span><h2>Đã lên kế hoạch</h2><span class="sprint-group-count" id="planned-count">0</span></div><div class="sprint-card-grid" id="planned-sprints"></div></div>
+                <div class="sprint-group"><div class="sprint-group-heading"><span class="sprint-state-dot completed-dot"></span><h2>Đã hoàn thành</h2><span class="sprint-group-count" id="completed-count">0</span></div><div class="sprint-card-grid" id="completed-sprints"></div></div>
+            </section>
+            <div class="sprint-empty" id="sprint-empty" hidden><span><i class="bi bi-lightning-charge" aria-hidden="true"></i></span><h2>Chưa có Sprint nào</h2><p>Tạo Sprint đầu tiên để bắt đầu chia nhỏ và theo dõi tiến độ công việc.</p><button class="primary-button" type="button" data-empty-create>Tạo Sprint</button></div>
+        </main>
+    </div>
+    <dialog class="sprint-dialog" id="sprint-dialog"><form id="sprint-form" method="dialog"><div class="dialog-heading"><div><p>SPRINT PLAN</p><h2 id="sprint-dialog-title">Tạo Sprint</h2></div><button type="button" class="dialog-close" data-close-dialog aria-label="Đóng"><i class="bi bi-x-lg" aria-hidden="true"></i></button></div><label class="dialog-field">Tên Sprint<input name="name" maxlength="80" required placeholder="Ví dụ: Sprint 01"></label><div class="dialog-grid"><label class="dialog-field">Ngày bắt đầu<input name="start_date" type="date" required></label><label class="dialog-field">Ngày kết thúc<input name="end_date" type="date" required></label></div><label class="dialog-field">Ghi chú<textarea name="goal" rows="3" maxlength="2000" placeholder="Ghi chú cho Sprint"></textarea></label><p class="sprint-form-error" id="sprint-form-error" role="alert" hidden></p><div class="dialog-actions"><span class="dialog-actions-spacer"></span><button type="button" class="secondary-button" data-close-dialog>Hủy</button><button type="submit" class="primary-button" id="sprint-submit">Tạo Sprint</button></div></form></dialog>
+    <div class="toast-message" id="toast-message" role="status" aria-live="polite"></div>
+    <script src="{{ url_for('static', filename='js/sprints.js', v=1) }}" defer></script>
+    <script src="{{ url_for('static', filename='js/notifications.js', v=6) }}" defer></script>
+</body>
+</html>

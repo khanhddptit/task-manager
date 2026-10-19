@@ -43,9 +43,10 @@ def test_schema_tables(app):
             "SELECT name FROM sqlite_master WHERE type = 'table'"
         )}
         assert tables == {
-            "user", "workspace", "project", "task",
-            "workspace_member", "project_member", "comment",
-            "schema_migration",
+            "user", "workspace", "project", "sprint", "task",
+            "sprint_task_history", "workspace_member", "project_member",
+            "member_invitation", "notification", "password_reset_token",
+            "password_reset_attempt", "comment", "oauth_identity", "schema_migration",
         }
 
 
@@ -65,7 +66,92 @@ def test_init_db_creates_indexes_after_migrations(app):
         "idx_task_updater",
         "idx_comment_updater",
         "uq_workspace_single_owner",
+        "uq_sprint_one_active_per_project",
+        "idx_sprint_task_history_sprint_time",
+        "idx_task_project_status_position",
+        "idx_member_invitation_scope",
+        "idx_notification_recipient_created",
+        "idx_notification_recipient_unread",
+        "idx_password_reset_token_user",
+        "idx_password_reset_attempt_email_time",
+        "idx_password_reset_attempt_ip_time",
     } <= indexes
+
+
+def test_member_invitation_migration_creates_table_for_legacy_database(app):
+    from app.migrations import apply_migrations
+
+    with app.app_context():
+        db = get_db()
+        db.execute("DROP TABLE member_invitation")
+        db.execute("DELETE FROM schema_migration WHERE version = 11")
+        db.commit()
+        apply_migrations(db)
+        columns = {
+            row["name"] for row in db.execute("PRAGMA table_info(member_invitation)")
+        }
+        assert {
+            "workspace_id", "project_id", "email", "role", "token_hash",
+            "expires_at", "accepted_at", "accepted_user_id", "revoked_at",
+        } <= columns
+        assert db.execute(
+            "SELECT 1 FROM schema_migration WHERE version = 11"
+        ).fetchone() is not None
+        assert db.execute("PRAGMA foreign_key_check").fetchall() == []
+
+
+def test_notification_migration_creates_table_without_replacing_v11(app):
+    from app.migrations import apply_migrations
+
+    with app.app_context():
+        db = get_db()
+        db.execute("DROP TABLE notification")
+        db.execute("DELETE FROM schema_migration WHERE version = 12")
+        db.commit()
+
+        apply_migrations(db)
+        columns = {
+            row["name"] for row in db.execute("PRAGMA table_info(notification)")
+        }
+        applied = db.execute(
+            "SELECT version FROM schema_migration ORDER BY version"
+        ).fetchall()
+        assert {
+            "recipient_id", "actor_id", "event_type", "metadata", "link_path",
+            "read_at", "created_at",
+        } <= columns
+        assert [row["version"] for row in applied][-2:] == [13, 14]
+        assert 12 in [row["version"] for row in applied]
+        assert db.execute("PRAGMA foreign_key_check").fetchall() == []
+
+
+def test_password_reset_migration_creates_token_and_rate_limit_tables(app):
+    from app.migrations import apply_migrations
+
+    with app.app_context():
+        db = get_db()
+        db.execute("DROP TABLE password_reset_token")
+        db.execute("DROP TABLE password_reset_attempt")
+        db.execute("DELETE FROM schema_migration WHERE version = 13")
+        db.commit()
+
+        apply_migrations(db)
+        token_columns = {
+            row["name"] for row in db.execute(
+                "PRAGMA table_info(password_reset_token)"
+            )
+        }
+        attempt_columns = {
+            row["name"] for row in db.execute(
+                "PRAGMA table_info(password_reset_attempt)"
+            )
+        }
+        assert {"user_id", "token_hash", "expires_at", "consumed_at"} <= token_columns
+        assert {"email_hash", "ip_hash", "requested_at"} <= attempt_columns
+        assert db.execute(
+            "SELECT 1 FROM schema_migration WHERE version = 13"
+        ).fetchone() is not None
+        assert db.execute("PRAGMA foreign_key_check").fetchall() == []
 
 
 def test_init_db_preserves_data(seeded_app):
@@ -77,6 +163,106 @@ def test_init_db_preserves_data(seeded_app):
         assert db.execute("SELECT username FROM user WHERE id = 1").fetchone()[0] == "demo"
         assert db.execute("SELECT COUNT(*) FROM task").fetchone()[0] == 1
         assert db.execute("SELECT COUNT(*) FROM comment").fetchone()[0] == 1
+
+
+def test_sprint_migration_preserves_tasks_comments_and_foreign_keys(seeded_app):
+    with seeded_app.app_context():
+        db = get_db()
+        db.commit()
+        db.execute("PRAGMA foreign_keys = OFF")
+        db.execute("""
+            CREATE TABLE task_legacy (
+                id INTEGER PRIMARY KEY, project_id INTEGER NOT NULL,
+                created_by INTEGER, assignee_id INTEGER, updated_by INTEGER,
+                title TEXT NOT NULL, description TEXT NOT NULL DEFAULT '',
+                status TEXT NOT NULL DEFAULT 'todo',
+                priority TEXT NOT NULL DEFAULT 'medium', due_date TEXT,
+                created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+            )
+        """)
+        db.execute("""
+            INSERT INTO task_legacy
+                (id, project_id, created_by, assignee_id, updated_by, title,
+                 description, status, priority, due_date, created_at, updated_at)
+            SELECT id, project_id, created_by, assignee_id, updated_by, title,
+                   description, status, priority, due_date, created_at, updated_at
+            FROM task
+        """)
+        db.execute("DROP TABLE task")
+        db.execute("ALTER TABLE task_legacy RENAME TO task")
+        db.execute("DELETE FROM schema_migration WHERE version IN (10, 14)")
+        db.commit()
+
+        from app.migrations import apply_migrations
+
+        apply_migrations(db)
+        assert db.execute("SELECT title FROM task WHERE id = 1").fetchone()[0] == "First task"
+        assert db.execute("SELECT content FROM comment WHERE task_id = 1").fetchone()[0] == "First comment"
+        assert db.execute("PRAGMA foreign_key_check").fetchall() == []
+        assert any(row["name"] == "sprint_id" for row in db.execute("PRAGMA table_info(task)"))
+
+
+def test_task_position_migration_preserves_rows_and_initializes_legacy_order(seeded_app):
+    from app.migrations import apply_migrations
+
+    with seeded_app.app_context():
+        db = get_db()
+        db.execute("""
+            INSERT INTO task (id, project_id, title, status, created_at)
+            VALUES (2, 1, 'Later todo', 'todo', '2026-01-02 00:00:00'),
+                   (3, 1, 'Earlier todo', 'todo', '2026-01-01 00:00:00'),
+                   (4, 1, 'In progress', 'in_progress', '2026-01-01 00:00:00')
+        """)
+        db.commit()
+        db.execute("PRAGMA foreign_keys = OFF")
+        db.execute("""
+            CREATE TABLE task_legacy (
+                id INTEGER PRIMARY KEY,
+                project_id INTEGER NOT NULL,
+                created_by INTEGER,
+                assignee_id INTEGER,
+                updated_by INTEGER,
+                title TEXT NOT NULL,
+                description TEXT NOT NULL DEFAULT '',
+                status TEXT NOT NULL DEFAULT 'todo',
+                priority TEXT NOT NULL DEFAULT 'medium',
+                sprint_id INTEGER,
+                due_date TEXT,
+                created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+            )
+        """)
+        db.execute("""
+            INSERT INTO task_legacy
+                (id, project_id, created_by, assignee_id, updated_by, title,
+                 description, status, priority, sprint_id, due_date, created_at,
+                 updated_at)
+            SELECT id, project_id, created_by, assignee_id, updated_by, title,
+                   description, status, priority, sprint_id, due_date, created_at,
+                   updated_at
+            FROM task
+        """)
+        db.execute("DROP TABLE task")
+        db.execute("ALTER TABLE task_legacy RENAME TO task")
+        db.execute("DELETE FROM schema_migration WHERE version = 14")
+        db.commit()
+
+        apply_migrations(db)
+        positions = db.execute(
+            "SELECT id, status, position FROM task ORDER BY status, position, id"
+        ).fetchall()
+        assert [(row["id"], row["position"]) for row in positions] == [
+            (4, 0), (3, 0), (2, 1), (1, 2),
+        ]
+        assert db.execute("SELECT content FROM comment WHERE task_id = 1").fetchone()[0] == "First comment"
+        assert db.execute("PRAGMA foreign_key_check").fetchall() == []
+        assert db.execute(
+            "SELECT 1 FROM schema_migration WHERE version = 14"
+        ).fetchone() is not None
+        assert "position" in {
+            row["name"] for row in db.execute("PRAGMA table_info(task)")
+        }
 
 
 def test_workspace_owner_is_unique_per_workspace(seeded_app):
@@ -288,7 +474,7 @@ def test_init_db_migrates_legacy_audit_columns_before_indexes(app, tmp_path):
         "created_by": None,
         "updated_by": None,
     }
-    assert [row["version"] for row in applied_migrations] == [1, 2, 3, 4, 5, 6]
+    assert [row["version"] for row in applied_migrations] == list(range(1, 15))
     assert legacy_user_timestamp
     assert tuple(audit_references) == (None, None, None, None)
     assert migrated_user_timestamp
@@ -373,6 +559,15 @@ def test_init_db_migrates_project_owner_to_admin_and_preserves_task_assignee(
             FOREIGN KEY (project_id, assignee_id)
                 REFERENCES project_member (project_id, user_id) ON DELETE NO ACTION
         );
+        CREATE TABLE comment (
+            id INTEGER PRIMARY KEY,
+            task_id INTEGER NOT NULL,
+            author_id INTEGER,
+            content TEXT NOT NULL,
+            created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (task_id) REFERENCES task (id) ON DELETE CASCADE
+        );
         INSERT INTO user (id, username, password_hash)
             VALUES (1, 'legacy-owner', 'placeholder');
         INSERT INTO workspace (id, name) VALUES (1, 'Workspace');
@@ -384,6 +579,8 @@ def test_init_db_migrates_project_owner_to_admin_and_preserves_task_assignee(
             VALUES (10, 1, 1, 'owner');
         INSERT INTO task (id, project_id, created_by, assignee_id, title)
             VALUES (100, 10, 1, 1, 'Assigned before migration');
+        INSERT INTO comment (id, task_id, author_id, content)
+            VALUES (200, 100, 1, 'Keep this comment');
     """)
     legacy_db.close()
 
@@ -398,7 +595,11 @@ def test_init_db_migrates_project_owner_to_admin_and_preserves_task_assignee(
             "FROM project_member WHERE project_id = 10"
         ).fetchone()
         task = db.execute(
-            "SELECT project_id, assignee_id FROM task WHERE id = 100"
+            "SELECT project_id, assignee_id, status, priority "
+            "FROM task WHERE id = 100"
+        ).fetchone()
+        comment = db.execute(
+            "SELECT content, task_id FROM comment WHERE id = 200"
         ).fetchone()
         foreign_key_errors = db.execute("PRAGMA foreign_key_check").fetchall()
         with pytest.raises(sqlite3.IntegrityError):
@@ -417,7 +618,8 @@ def test_init_db_migrates_project_owner_to_admin_and_preserves_task_assignee(
     assert member["workspace_id"] == 1
     assert member["user_id"] == 1
     assert member["joined_at"]
-    assert tuple(task) == (10, 1)
+    assert tuple(task) == (10, 1, "todo", "medium")
+    assert tuple(comment) == ("Keep this comment", 100)
     assert foreign_key_errors == []
 
 
@@ -428,6 +630,7 @@ def test_defaults_and_unassigned_task(seeded_app):
         db.commit()
         task = db.execute("SELECT * FROM task WHERE title = 'Unassigned'").fetchone()
         assert task["status"] == "todo"
+        assert task["priority"] == "medium"
         assert task["description"] == ""
         assert task["assignee_id"] is None
         assert task["created_at"] is not None
@@ -447,6 +650,7 @@ def test_defaults_and_unassigned_task(seeded_app):
     "INSERT INTO task (project_id, title) VALUES (999, 'Missing project')",
     "INSERT INTO task (project_id, title) VALUES (1, ' ')",
     "INSERT INTO task (project_id, title, status) VALUES (1, 'Task', 'invalid')",
+    "INSERT INTO task (project_id, title, priority) VALUES (1, 'Task', 'urgent')",
     "INSERT INTO comment (task_id, content) VALUES (1, ' ')",
     "INSERT INTO comment (task_id, content) VALUES (999, 'Missing task')",
     "INSERT INTO comment (task_id, author_id, content) VALUES (1, 999, 'Missing author')",

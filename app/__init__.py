@@ -30,9 +30,11 @@ def create_app(test_config=None):
     Path(app.instance_path).mkdir(parents=True, exist_ok=True)
 
     from app import db
+    from authlib.integrations.flask_client import OAuth
     from app.auth import bp as auth_bp
     from app.comments import bp as comments_bp
     from app.main import bp as main_bp
+    from app.notifications import bp as notifications_bp
     from app.projects import bp as projects_bp
     from app.tasks import bp as tasks_bp, page_bp as tasks_page_bp
     from app.workspaces import bp as workspaces_bp
@@ -40,7 +42,25 @@ def create_app(test_config=None):
     db.init_app(app)
     app.register_blueprint(auth_bp)
     CSRFProtect(app)
+    google_oauth = OAuth(app)
+    google_oauth_enabled = bool(
+        app.config.get("GOOGLE_CLIENT_ID")
+        and app.config.get("GOOGLE_CLIENT_SECRET")
+    )
+    if google_oauth_enabled:
+        google_oauth.register(
+            name="google",
+            client_id=app.config["GOOGLE_CLIENT_ID"],
+            client_secret=app.config["GOOGLE_CLIENT_SECRET"],
+            server_metadata_url=(
+                "https://accounts.google.com/.well-known/openid-configuration"
+            ),
+            client_kwargs={"scope": "openid email profile"},
+        )
+    app.extensions["google_oauth"] = google_oauth
+    app.extensions["google_oauth_enabled"] = google_oauth_enabled
     app.register_blueprint(main_bp)
+    app.register_blueprint(notifications_bp)
     app.register_blueprint(projects_bp)
     app.register_blueprint(tasks_bp)
     app.register_blueprint(tasks_page_bp)
@@ -50,7 +70,7 @@ def create_app(test_config=None):
     def is_api_request():
         return any(
             request.path == prefix or request.path.startswith(f"{prefix}/")
-            for prefix in ("/auth", "/workspaces", "/projects")
+            for prefix in ("/auth", "/workspaces", "/projects", "/notifications")
         )
 
     @app.errorhandler(CSRFError)

@@ -1,0 +1,47 @@
+<!doctype html>
+<html lang="vi">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="theme-color" content="#17191d">
+    <meta name="csrf-token" content="{{ csrf_token() }}">
+    <title>Thành viên | Kairo</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Manrope:wght@500;600;700;800&display=swap" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/members.css', v=3) }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/notifications.css', v=2) }}">
+</head>
+<body class="members-page member-directory" data-directory-url="{{ workspaces_url }}">
+    <header class="members-topbar">
+        <a class="brand" href="{{ url_for('main.index') }}"><span class="brand-icon"><i class="bi bi-layers-fill" aria-hidden="true"></i></span><span><strong>Kairo</strong><small>PROJECT WORKSPACE</small></span></a>
+        <div class="topbar-tools">
+            <a class="back-link" href="{{ url_for('tasks.index') }}"><i class="bi bi-arrow-left" aria-hidden="true"></i> Bảng công việc</a>
+            <button class="theme-toggle" type="button" aria-label="Chuyển giao diện"><i class="bi bi-moon" aria-hidden="true"></i></button>
+            {% include 'partials/notifications.html' %}
+        </div>
+    </header>
+    <main class="members-main">
+        <nav class="breadcrumbs" aria-label="Đường dẫn"><a href="{{ url_for('main.index') }}">Kairo</a><i class="bi bi-chevron-right" aria-hidden="true"></i><span class="current">Thành viên</span></nav>
+        <section class="page-heading">
+            <div><p class="eyebrow">QUẢN LÝ TRUY CẬP</p><h1>Thành viên</h1><p class="subtitle">Chọn workspace hoặc project để xem và quản lý thành viên.</p></div>
+                    <button id="create-workspace" class="primary-button" type="button" hidden><i class="bi bi-plus-lg" aria-hidden="true"></i> Tạo Workspace</button>
+                </section>
+        <section id="directory-content" class="directory-grid" aria-live="polite"><p class="loading-cell">Đang tải workspace…</p></section>
+        <p class="notice" id="directory-notice" role="status" aria-live="polite" hidden></p>
+    </main>
+    <dialog id="workspace-dialog" class="invite-dialog">
+        <form id="workspace-form" class="dialog-form">
+            <button class="dialog-close" type="button" data-close-workspace-dialog aria-label="Đóng"><i class="bi bi-x-lg" aria-hidden="true"></i></button>
+            <p class="eyebrow">QUẢN LÝ WORKSPACE</p><h2 id="workspace-dialog-title">Tạo Workspace</h2><p class="dialog-copy">Tạo không gian để tổ chức project và thành viên.</p>
+            <label for="workspace-name">Tên Workspace</label><input id="workspace-name" name="name" type="text" required autocomplete="off">
+            <label for="workspace-description" class="field-label-spaced">Mô tả <span>(không bắt buộc)</span></label><textarea id="workspace-description" name="description" rows="3"></textarea>
+            <p class="form-error" id="workspace-error" role="alert" hidden></p>
+            <div class="dialog-actions"><button id="workspace-delete" class="secondary-button danger-button" type="button" hidden>Xóa Workspace</button><button class="primary-button dialog-submit" type="submit">Tạo Workspace</button></div>
+        </form>
+    </dialog>
+    <script src="{{ url_for('static', filename='js/members.js', v=4) }}" defer></script>
+    <script src="{{ url_for('static', filename='js/notifications.js', v=6) }}" defer></script>
+</body>
+</html>

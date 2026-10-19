@@ -47,7 +47,8 @@ def get_workspace_member_role(workspace_id, user_id):
 
 def get_workspace_members(workspace_id):
     return get_db().execute(
-        """SELECT wm.user_id, u.username, wm.role, wm.joined_at
+        """SELECT wm.user_id, u.username, u.display_name, u.email,
+                  wm.role, wm.joined_at
            FROM workspace_member AS wm
            JOIN user AS u ON u.id = wm.user_id
            WHERE wm.workspace_id = ?
@@ -60,7 +61,8 @@ def get_workspace_members(workspace_id):
 
 def get_workspace_member(workspace_id, user_id):
     return get_db().execute(
-        """SELECT wm.user_id, u.username, wm.role, wm.joined_at
+        """SELECT wm.user_id, u.username, u.display_name, u.email,
+                  wm.role, wm.joined_at
            FROM workspace_member AS wm
            JOIN user AS u ON u.id = wm.user_id
            WHERE wm.workspace_id = ? AND wm.user_id = ?""",

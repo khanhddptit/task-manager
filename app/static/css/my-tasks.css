@@ -1,0 +1,75 @@
+.my-tasks-main { max-width: 1580px; min-height: calc(100vh - 57px); margin: 0 auto; padding: 34px 38px 58px; }
+.my-tasks-heading { display: flex; align-items: flex-end; justify-content: space-between; gap: 24px; margin-bottom: 27px; }
+.my-tasks-heading h1 { margin: 0; color: var(--text); font: 700 27px/1.2 "Manrope", var(--font); letter-spacing: -.04em; }
+.my-tasks-subtitle { max-width: 630px; margin: 9px 0 0; color: var(--text-soft); font-size: 13px; line-height: 1.6; }
+.my-task-summary { display: flex; align-items: baseline; gap: 6px; padding-bottom: 3px; color: var(--text-dim); font-size: 11px; }
+.my-task-summary strong { color: var(--text); font: 700 22px "Manrope", var(--font); }
+.my-tasks-toolbar { display: flex; align-items: center; flex-wrap: wrap; gap: 9px; min-height: 56px; padding: 9px 10px; border: 1px solid var(--line); border-radius: 10px; background: var(--panel-bg); }
+.my-task-search { display: flex; align-items: center; gap: 8px; flex: 1 1 230px; min-width: 170px; height: 35px; padding: 0 10px; border: 1px solid var(--line); border-radius: 7px; color: var(--text-dim); background: var(--panel-raised); }
+.my-task-search input { width: 100%; min-width: 0; border: 0; outline: 0; color: var(--text); background: transparent; font: inherit; font-size: 11px; }
+.my-task-search input::placeholder { color: var(--text-dim); }
+.my-task-filter { display: flex; align-items: center; gap: 7px; height: 35px; padding: 0 9px; border: 1px solid var(--line); border-radius: 7px; color: var(--text-dim); background: var(--panel-raised); }
+.my-task-filter select { max-width: 155px; border: 0; outline: 0; color: var(--text-soft); background: transparent; font: inherit; font-size: 11px; }
+.my-task-filter option { color: #edf0f5; background: #25272b; }
+.sort-label { color: var(--text-dim); font-size: 10px; }
+.group-switch { display: flex; align-items: center; gap: 2px; margin-left: auto; padding: 3px; border: 1px solid var(--line); border-radius: 8px; background: var(--panel-raised); }
+.group-switch button { display: inline-flex; align-items: center; gap: 6px; min-height: 28px; padding: 0 9px; border: 0; border-radius: 6px; color: var(--text-dim); background: transparent; font: 600 10px var(--font); cursor: pointer; white-space: nowrap; }
+.group-switch button:hover { color: var(--text); }
+.group-switch button.selected { color: var(--text); background: #34373d; box-shadow: 0 1px 3px rgba(0,0,0,.24); }
+.my-tasks-notice { margin: 14px 0 0; padding: 10px 12px; border: 1px solid rgba(238,96,96,.3); border-radius: 8px; color: #ffaaaa; background: rgba(238,96,96,.08); font-size: 12px; }
+.my-task-groups { margin-top: 25px; }
+.my-task-group { margin: 0 0 26px; overflow: hidden; border: 1px solid var(--line); border-radius: 10px; background: var(--panel-bg); }
+.my-task-group-heading { display: flex; align-items: center; gap: 10px; min-height: 61px; padding: 12px 16px; border-bottom: 1px solid var(--line); }
+.my-task-group-icon { display: grid; flex: 0 0 30px; place-items: center; width: 30px; height: 30px; border: 1px solid var(--line); border-radius: 8px; color: #92b5ff; background: rgba(78,140,255,.1); }
+.my-task-group-title { min-width: 0; flex: 1; }
+.my-task-group-title h2 { overflow: hidden; margin: 0; color: var(--text); font: 650 13px "Manrope", var(--font); text-overflow: ellipsis; white-space: nowrap; }
+.my-task-group-title p { margin: 3px 0 0; overflow: hidden; color: var(--text-dim); font-size: 10px; text-overflow: ellipsis; white-space: nowrap; }
+.my-task-group-count { flex: 0 0 auto; color: var(--text-soft); font-size: 10px; }
+.my-task-progress { display: flex; align-items: center; gap: 9px; width: min(185px, 22vw); margin-left: 10px; }
+.my-task-progress-track { height: 5px; flex: 1; overflow: hidden; border-radius: 10px; background: var(--line-strong); }
+.my-task-progress-fill { height: 100%; border-radius: inherit; background: linear-gradient(90deg, #4e8cff, #7c9dff); }
+.my-task-progress-label { color: var(--text-dim); font-size: 10px; white-space: nowrap; }
+.my-task-table { width: 100%; border-collapse: collapse; table-layout: fixed; }
+.my-task-table th { height: 34px; padding: 0 12px; border-bottom: 1px solid var(--line); color: #747b86; text-align: left; font-size: 9px; font-weight: 600; letter-spacing: .04em; }
+.my-task-table td { height: 57px; padding: 8px 12px; border-bottom: 1px solid rgba(255,255,255,.045); color: var(--text-soft); font-size: 11px; }
+.my-task-table tr:last-child td { border-bottom: 0; }
+.my-task-table tbody tr:hover { background: rgba(255,255,255,.022); }
+.my-task-table th:first-child, .my-task-table td:first-child { width: 42px; padding-left: 16px; }
+.my-task-table th:nth-child(2) { width: 43%; }
+.my-task-table th:nth-child(3) { width: 105px; }
+.my-task-table th:nth-child(4) { width: 125px; }
+.my-task-table th:nth-child(5) { width: 150px; }
+.my-task-table th:nth-child(6) { width: 125px; }
+.my-task-table th:nth-child(7) { width: 140px; }
+.task-done-toggle { width: 15px; height: 15px; margin: 0; accent-color: #4e8cff; cursor: pointer; }
+.task-done-toggle:disabled { cursor: wait; opacity: .55; }
+.task-title-cell { display: flex; align-items: center; gap: 9px; min-width: 0; }
+.task-id { flex: 0 0 auto; color: #747b87; font: 500 10px var(--font); }
+.task-title { overflow: hidden; color: #e4e8ee; font-size: 11px; font-weight: 550; text-overflow: ellipsis; white-space: nowrap; }
+.task-title.is-done { color: #858c97; text-decoration: line-through; }
+.task-project-caption { display: none; }
+.task-priority, .task-status { display: inline-flex; align-items: center; gap: 5px; padding: 4px 7px; border: 1px solid var(--line); border-radius: 5px; color: var(--text-soft); font-size: 9px; white-space: nowrap; }
+.task-priority::before, .task-status::before { width: 6px; height: 6px; border-radius: 50%; background: currentColor; content: ""; }
+.task-priority.high { border-color: rgba(238,96,96,.2); color: #f18e8e; background: rgba(238,96,96,.06); }
+.task-priority.medium { border-color: rgba(231,177,77,.18); color: #e2b563; background: rgba(231,177,77,.05); }
+.task-priority.low { color: #8291a8; background: rgba(130,145,168,.05); }
+.task-due { color: #aeb5bf; white-space: nowrap; }
+.task-due.overdue { color: #ee8b8b; }
+.task-assignee-cell { display: flex; align-items: center; gap: 7px; min-width: 0; }
+.task-assignee-cell .task-assignee { width: 24px; height: 24px; font-size: 9px; object-fit: cover; }
+.profile-avatar img { width: 100%; height: 100%; border-radius: inherit; object-fit: cover; }
+.task-assignee-name { overflow: hidden; color: #c3c9d2; text-overflow: ellipsis; white-space: nowrap; }
+.task-sprint { display: inline-flex; align-items: center; gap: 6px; overflow: hidden; color: #aab3c0; text-overflow: ellipsis; white-space: nowrap; }
+.task-sprint i { color: #9a83da; }
+.task-sprint.is-backlog { color: #7e8691; }
+.task-status.todo { color: #9da6b4; }
+.task-status.in_progress { color: #7da8ff; }
+.task-status.review { color: #c79af1; }
+.task-status.done { color: #55c99a; }
+.my-task-empty { display: grid; justify-items: center; max-width: 440px; margin: 55px auto; padding: 26px 20px; text-align: center; }
+.my-task-empty > span { display: grid; place-items: center; width: 49px; height: 49px; margin-bottom: 12px; border: 1px solid var(--line); border-radius: 14px; color: #7fa9ff; background: var(--panel-bg); font-size: 20px; }
+.my-task-empty h2 { margin: 0; color: var(--text); font: 650 15px "Manrope", var(--font); }
+.my-task-empty p { max-width: 330px; margin: 7px 0 0; color: var(--text-soft); font-size: 11px; line-height: 1.6; }
+@media (max-width: 1050px) { .my-task-table th:nth-child(2) { width: 35%; } .my-task-table th:nth-child(5) { width: 120px; } .my-task-table th:nth-child(6) { width: 105px; } .my-task-table th:nth-child(7) { width: 125px; } }
+@media (max-width: 790px) { .my-tasks-main { padding: 25px 18px 40px; } .my-tasks-toolbar { align-items: stretch; } .my-task-search { flex-basis: 100%; } .group-switch { margin-left: 0; } .my-task-table { min-width: 870px; } .my-task-group { overflow-x: auto; } .my-task-progress { display: none; } }
+@media (max-width: 560px) { .my-tasks-heading { align-items: flex-start; } .my-tasks-heading h1 { font-size: 23px; } .my-tasks-subtitle { max-width: 315px; font-size: 11px; } .my-task-summary { padding-top: 5px; } .my-task-summary strong { font-size: 18px; } .my-task-sort { display: none; } .group-switch { width: 100%; } .group-switch button { flex: 1; justify-content: center; padding: 0 5px; font-size: 9px; } .my-task-group-heading { padding: 10px; } .my-task-group-count { font-size: 9px; } }

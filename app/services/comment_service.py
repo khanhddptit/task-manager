@@ -1,5 +1,6 @@
 from app.auth.validation import ValidationError
 from app.db import write_transaction
+from app.models.notification import get_task_notification_context
 from app.models.comment import (
     check_task_hierarchy,
     delete_comment,
@@ -9,6 +10,7 @@ from app.models.comment import (
     list_comments_by_task,
     update_comment,
 )
+from app.services.notification_service import notify_comment_created
 
 MAX_COMMENT_LENGTH = 5000
 
@@ -88,6 +90,8 @@ def create_comment(workspace_id, project_id, task_id, data, user_id):
         _ensure_task_exists(workspace_id, project_id, task_id)
         _ensure_project_access(user_id, workspace_id, project_id)
         comment_id = insert_comment(task_id, user_id, content)
+        task = get_task_notification_context(task_id)
+        notify_comment_created(task, comment_id, content, user_id)
         return get_comment_by_id(comment_id)
 
 

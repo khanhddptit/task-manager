@@ -12,6 +12,9 @@ def app(tmp_path):
         "SECRET_KEY": "test-only-not-for-deployment",
         "DATABASE": str(tmp_path / "test.sqlite3"),
         "SESSION_COOKIE_SECURE": False,
+        "GOOGLE_CLIENT_ID": None,
+        "GOOGLE_CLIENT_SECRET": None,
+        "GOOGLE_REDIRECT_URI": None,
     })
     with application.app_context():
         init_db()

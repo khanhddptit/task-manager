@@ -150,6 +150,10 @@ def test_legacy_migration_preserves_data_and_can_run_repeatedly(app, tmp_path):
         migration = db.execute(
             "SELECT MAX(version) FROM schema_migration"
         ).fetchone()
+        legacy_profile = db.execute(
+            "SELECT display_name, email, avatar_path, auth_version "
+            "FROM user WHERE id = 10"
+        ).fetchone()
         new_user_updated_at = db.execute(
             "SELECT updated_at FROM user WHERE username = 'new-user'"
         ).fetchone()["updated_at"]
@@ -175,8 +179,13 @@ def test_legacy_migration_preserves_data_and_can_run_repeatedly(app, tmp_path):
         "name": "Legacy project",
         "created_by": None,
     }
-    assert migration["MAX(version)"] == 6
+    assert migration["MAX(version)"] == 14
+    assert tuple(legacy_profile) == ("legacy", None, None, 0)
     assert UTC_TIMESTAMP_FORMAT.fullmatch(new_user_updated_at)
+    assert {
+        "display_name", "email", "avatar_path", "auth_version",
+        "password_login_enabled",
+    } <= columns["user"]
     assert "updated_at" in columns["user"]
     assert all("updated_by" in columns[table] for table in columns if table != "user")
     assert {"idx_workspace_creator", "idx_project_creator"} <= indexes

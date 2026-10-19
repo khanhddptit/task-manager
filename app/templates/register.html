@@ -1,0 +1,74 @@
+<!doctype html>
+<html lang="vi">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="theme-color" content="#f8f9fc">
+    <title>Tạo tài khoản | Kairo</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Manrope:wght@500;600;700;800&display=swap" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/login.css', v=3) }}">
+</head>
+<body class="login-page">
+    <main class="login-shell" id="main-content">
+        <section class="brand-panel" aria-labelledby="brand-title">
+            <a class="brand-mark" href="{{ url_for('main.index') }}" aria-label="Kairo, trang chủ">
+                <span class="brand-mark-icon"><i class="bi bi-layers-fill" aria-hidden="true"></i></span>
+                <span>KAIRO</span>
+            </a>
+            <div class="brand-copy">
+                <p class="eyebrow"><span></span> PROJECT WORKSPACE</p>
+                <h1 id="brand-title">Bắt đầu cùng<br>một team tốt hơn.</h1>
+                <p class="brand-description">Tạo workspace cho nhóm, gom công việc vào một board và cùng nhau đưa dự án về đích.</p>
+            </div>
+            <div class="feature-list" aria-label="Điểm nổi bật">
+                <article class="feature-item"><span class="feature-icon"><i class="bi bi-layers" aria-hidden="true"></i></span><div><h2>Mọi việc cùng một nơi</h2><p>Task, ưu tiên và tiến độ được sắp xếp rõ ràng.</p></div></article>
+                <article class="feature-item"><span class="feature-icon"><i class="bi bi-people" aria-hidden="true"></i></span><div><h2>Cùng team tiến lên</h2><p>Mời đúng người và phối hợp theo cách của nhóm.</p></div></article>
+            </div>
+            <p class="brand-footnote">Một nơi để tập trung. Một bước tiến mỗi ngày.</p>
+        </section>
+
+        <section class="form-panel" aria-label="Tạo tài khoản Kairo">
+            <div class="login-card register-card">
+                <div class="mini-brand"><span class="mini-brand-icon"><i class="bi bi-layers-fill" aria-hidden="true"></i></span><span><strong>Kairo</strong><small>PROJECT WORKSPACE</small></span></div>
+                <header class="form-heading">
+                    <p class="form-kicker">Chỉ mất một phút</p>
+                    <h2>Tạo tài khoản</h2>
+                    <p>Bắt đầu tổ chức công việc cùng team của bạn.</p>
+                </header>
+                <form id="register-form" novalidate>
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <div class="field-group">
+                        <label for="display-name">Tên hiển thị <span class="optional-label">Không bắt buộc</span></label>
+                        <div class="input-shell"><i class="bi bi-person-badge" aria-hidden="true"></i><input id="display-name" name="display_name" type="text" autocomplete="name" maxlength="80" placeholder="Tên của bạn"></div>
+                    </div>
+                    <div class="field-group">
+                        <label for="username">Tên đăng nhập</label>
+                        <div class="input-shell"><i class="bi bi-person" aria-hidden="true"></i><input id="username" name="username" type="text" autocomplete="username" autocapitalize="none" spellcheck="false" minlength="3" maxlength="32" pattern="[A-Za-z0-9_.-]+" placeholder="ten.dang.nhap" required></div>
+                        <small class="field-hint">3–32 ký tự: chữ không dấu, số, dấu chấm, gạch dưới hoặc gạch ngang.</small>
+                    </div>
+                    <div class="field-group">
+                        <label for="email">Email</label>
+                        <div class="input-shell"><i class="bi bi-envelope" aria-hidden="true"></i><input id="email" name="email" type="email" autocomplete="email" maxlength="254" placeholder="you@company.com" required></div>
+                    </div>
+                    <div class="field-group">
+                        <label for="password">Mật khẩu</label>
+                        <div class="input-shell"><i class="bi bi-lock" aria-hidden="true"></i><input id="password" name="password" type="password" autocomplete="new-password" minlength="8" maxlength="128" placeholder="Tối thiểu 8 ký tự" required><button class="password-toggle" type="button" aria-label="Hiện mật khẩu" aria-pressed="false"><i class="bi bi-eye" aria-hidden="true"></i></button></div>
+                    </div>
+                    <div class="field-group">
+                        <label for="confirm-password">Nhập lại mật khẩu</label>
+                        <div class="input-shell"><i class="bi bi-shield-lock" aria-hidden="true"></i><input id="confirm-password" name="confirm_password" type="password" autocomplete="new-password" minlength="8" maxlength="128" placeholder="Nhập lại mật khẩu" required></div>
+                    </div>
+                    <p class="form-feedback" id="register-feedback" role="status" aria-live="polite"></p>
+                    <button class="login-submit" type="submit">Tạo tài khoản <i class="bi bi-arrow-right" aria-hidden="true"></i></button>
+                </form>
+                <div class="signup-prompt">Đã có tài khoản? <a href="{{ url_for('main.login') }}">Đăng nhập</a></div>
+            </div>
+            <p class="form-footer">© 2026 Kairo <span>·</span> Làm việc cùng nhau, tiến xa hơn.</p>
+        </section>
+    </main>
+    <script src="{{ url_for('static', filename='js/register.js', v=2) }}" defer></script>
+</body>
+</html>

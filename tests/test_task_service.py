@@ -75,6 +75,7 @@ def test_task_crud_and_stable_project_listing(app):
         assert first["title"] == "First task"
         assert first["description"] == ""
         assert first["status"] == "in_progress"
+        assert first["priority"] == "medium"
         assert first["assignee_id"] == ids["member_id"]
         assert first["due_date"] == "2026-12-31"
         assert get_task(
@@ -82,7 +83,7 @@ def test_task_crud_and_stable_project_listing(app):
         )["id"] == first["id"]
         assert [row["id"] for row in list_tasks(
             ids["workspace_id"], ids["project_id"], ids["member_id"]
-        )] == [second["id"], first["id"]]
+        )] == [first["id"], second["id"]]
 
         updated = update_task(
             ids["workspace_id"],
@@ -91,9 +92,13 @@ def test_task_crud_and_stable_project_listing(app):
             first["id"],
             title="Updated",
             assignee_id=None,
+            status="review",
+            priority="high",
             due_date=None,
         )
         assert updated["title"] == "Updated"
+        assert updated["status"] == "review"
+        assert updated["priority"] == "high"
         assert updated["assignee_id"] is None
         assert updated["due_date"] is None
         assert updated["updated_by"] == ids["admin_id"]
@@ -143,6 +148,7 @@ def test_create_accepts_title_of_255_characters(app):
         {"title": "   "},
         {"title": 10},
         {"status": "blocked"},
+        {"priority": "urgent"},
         {"due_date": "2026-02-29"},
         {"due_date": "20260228"},
         {"description": None},
