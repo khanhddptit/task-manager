@@ -15,7 +15,7 @@
     <link rel="stylesheet" href="{{ url_for('static', filename='css/kanban.css', v=21) }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/notifications.css', v=2) }}">
 </head>
-<body class="members-page kanban-page" data-scope="{{ scope }}" data-members-url="{{ members_url }}" data-invitations-url="{{ invitations_url }}" data-invitation-url="{{ invitation_collection_url }}">
+<body class="members-page kanban-page" data-scope="{{ scope }}" data-workspace-id="{{ workspace_id }}" data-project-id="{{ project_id }}" data-members-url="{{ members_url }}" data-invitations-url="{{ invitations_url }}" data-invitation-url="{{ invitation_collection_url }}">
     {% include 'partials/app-sidebar.html' %}
     <div class="app-shell">
     <header class="members-topbar">
@@ -64,6 +64,7 @@
     </dialog>
     <dialog id="invite-dialog" class="invite-dialog">
         <form id="invite-form" class="dialog-form">
+            {% if scope == 'project' %}<label for="workspace-member-select">Thành viên Workspace</label><select id="workspace-member-select"><option value="">Chọn thành viên có sẵn</option></select><p class="dialog-copy">Hoặc nhập email để mời người chưa thuộc Workspace.</p>{% endif %}
             <button class="dialog-close" type="button" data-close-dialog aria-label="Đóng"><i class="bi bi-x-lg" aria-hidden="true"></i></button>
             <p class="eyebrow">LỜI MỜI {{ scope_name|upper }}</p><h2>Thêm thành viên</h2><p class="dialog-copy">Người được mời sẽ tham gia với vai trò Member. Họ cần đăng nhập bằng đúng email này để chấp nhận.</p>
             <label for="invite-email">Email</label><input id="invite-email" name="email" type="email" autocomplete="email" maxlength="254" placeholder="name@example.com" required>

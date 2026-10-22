@@ -100,6 +100,15 @@
         document.querySelector("#project-name").textContent = project.name;
         document.querySelector("#project-code").textContent = `TP-${project.id}`;
         document.querySelector("#breadcrumb-project").textContent = project.name;
+        const breadcrumbProject = document.querySelector("#breadcrumb-project");
+        breadcrumbProject.setAttribute("role", "link");
+        breadcrumbProject.setAttribute("tabindex", "0");
+        breadcrumbProject.style.cursor = "pointer";
+        const goToProject = () => window.location.assign(`/tasks/?workspace_id=${workspace.id}&project_id=${project.id}`);
+        breadcrumbProject.addEventListener("click", goToProject);
+        breadcrumbProject.addEventListener("keydown", (event) => {
+            if (event.key === "Enter" || event.key === " ") goToProject();
+        });
         document.querySelector("#profile-name").textContent = name;
         document.querySelector("#profile-email").textContent = me.user.email || me.user.username || "";
         const profileAvatar = document.querySelector("#profile-avatar");

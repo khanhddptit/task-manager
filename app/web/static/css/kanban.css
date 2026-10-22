@@ -65,6 +65,7 @@ button { color: inherit; }
 .tree-project { display: flex; align-items: center; gap: 9px; min-height: 33px; padding: 0 8px; border: 0; color: #dce1e8; text-align: left; background: transparent; }
 .tree-project > i { color: #737b86; font-size: 10px; }
 .project-dot, .breadcrumb-dot { width: 8px; height: 8px; border-radius: 3px; background: #32b8c5; }
+.breadcrumbs .breadcrumb-dot { display: none; }
 .tree-project strong { font-size: 12px; font-weight: 600; }
 .tree-project small { margin-left: auto; color: #78808b; font-size: 9px; }
 .tree-item { position: relative; display: flex; align-items: center; gap: 9px; min-height: 30px; margin-left: 16px; padding: 0 9px; border-radius: 7px; color: #969da8; text-decoration: none; }

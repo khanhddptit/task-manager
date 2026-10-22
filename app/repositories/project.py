@@ -88,6 +88,13 @@ def update_project(project_id, name, description, updated_by):
 
 
 def delete_project(workspace_id, project_id):
+    # Tasks keep foreign keys to project_member and sprint. Clear both optional
+    # links first so cascading project deletion cannot violate those
+    # constraints (assignee uses NO ACTION and sprint uses RESTRICT).
+    get_db().execute(
+        "UPDATE task SET assignee_id = NULL, sprint_id = NULL WHERE project_id = ?",
+        (project_id,),
+    )
     get_db().execute(
         "DELETE FROM project WHERE workspace_id = ? AND id = ?",
         (workspace_id, project_id),

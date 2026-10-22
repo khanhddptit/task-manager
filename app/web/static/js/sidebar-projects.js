@@ -95,9 +95,7 @@
                 const query = `workspace_id=${workspace.id}&project_id=${project.id}`;
                 const membersHref = endpoint === "main.project_members_page"
                     ? `/workspaces/${workspace.id}/projects/${project.id}/members/page`
-                    : endpoint === "main.workspace_members_page"
-                        ? `/workspaces/${workspace.id}/members/page`
-                        : `/workspaces/${workspace.id}/projects/${project.id}/members/page`;
+                    : `/workspaces/${workspace.id}/projects/${project.id}/members/page`;
                 const links = [
                     ["bi-list-task", "Task", `/tasks/?${query}`, currentUrl.pathname.startsWith("/tasks/") && selected],
                     ["bi-people", "Thành viên", membersHref, currentUrl.pathname.includes("/members") && selected],

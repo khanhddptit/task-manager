@@ -754,6 +754,15 @@ function updateBoardIdentity(user, workspace, project) {
     document.querySelector(".board-heading h1").textContent = project.name;
     document.querySelector(".project-summary > span:first-child").textContent = `TP-${project.id}`;
     document.querySelectorAll(".breadcrumbs > span")[1].textContent = workspace.name;
+    const breadcrumbWorkspace = document.querySelectorAll(".breadcrumbs > span")[1];
+    breadcrumbWorkspace.setAttribute("role", "link");
+    breadcrumbWorkspace.setAttribute("tabindex", "0");
+    breadcrumbWorkspace.style.cursor = "pointer";
+    const goToWorkspace = () => window.location.assign(`/workspaces/${workspace.id}/members/page`);
+    breadcrumbWorkspace.addEventListener("click", goToWorkspace);
+    breadcrumbWorkspace.addEventListener("keydown", (event) => {
+        if (event.key === "Enter" || event.key === " ") goToWorkspace();
+    });
     const projectQuery = `?workspace_id=${workspace.id}&project_id=${project.id}`;
     document.querySelector("#sprint-link").href = `/sprints/${projectQuery}`;
     document.querySelector("#progress-link").href = `/sprints/progress${projectQuery}`;
@@ -874,7 +883,8 @@ async function loadLiveBoardData() {
                 window.history.replaceState({}, "", nextUrl);
             }
         }
-        if (!query.has("workspace_id") || !query.has("project_id")) {
+        if (Number(query.get("workspace_id")) !== workspace.id
+            || Number(query.get("project_id")) !== project.id) {
             const nextUrl = new URL(window.location.href);
             nextUrl.searchParams.set("workspace_id", workspace.id);
             nextUrl.searchParams.set("project_id", project.id);
@@ -971,10 +981,9 @@ document.querySelector("#project-picker-toggle").addEventListener("click", (even
 document.querySelector("#workspace-menu").addEventListener("click", (event) => {
     const option = event.target.closest("[data-workspace-id]");
     if (!option) return;
-    const nextUrl = new URL(window.location.href);
-    nextUrl.searchParams.set("workspace_id", option.dataset.workspaceId);
-    nextUrl.searchParams.delete("project_id");
-    window.location.assign(nextUrl);
+    // A project id is only meaningful inside its workspace. Start from the
+    // canonical board route so the old page and project context cannot leak.
+    window.location.assign(`/tasks/?workspace_id=${option.dataset.workspaceId}`);
 });
 
 document.querySelector("#project-menu").addEventListener("click", (event) => {
