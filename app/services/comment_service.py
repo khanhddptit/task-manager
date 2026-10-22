@@ -1,7 +1,7 @@
-from app.auth.validation import ValidationError
-from app.db import write_transaction
-from app.models.notification import get_task_notification_context
-from app.models.comment import (
+from app.features.auth.validation import ValidationError
+from app.core.db import write_transaction
+from app.repositories.notification import get_task_notification_context
+from app.repositories.comment import (
     check_task_hierarchy,
     delete_comment,
     get_comment_by_id,

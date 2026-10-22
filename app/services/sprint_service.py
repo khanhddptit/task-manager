@@ -1,8 +1,8 @@
 from datetime import date, timedelta
 
-from app.db import get_db, write_transaction
-from app.models.project import get_project_for_user
-from app.models.sprint import (
+from app.core.db import get_db, write_transaction
+from app.repositories.project import get_project_for_user
+from app.repositories.sprint import (
     count_active_sprints,
     get_sprint,
     get_sprint_task_history,

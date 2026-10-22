@@ -1,7 +1,7 @@
 from datetime import date
 
-from app.db import write_transaction
-from app.models.task import (
+from app.core.db import write_transaction
+from app.repositories.task import (
     delete_task as delete_task_record,
     get_project_access_context,
     get_task_by_id,
@@ -11,7 +11,7 @@ from app.models.task import (
     reorder_project_tasks,
     update_task as update_task_record,
 )
-from app.models.sprint import (
+from app.repositories.sprint import (
     get_sprint,
     insert_sprint_task_event,
 )

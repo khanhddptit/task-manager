@@ -1,6 +1,6 @@
 from datetime import date, timedelta
 
-from app.db import get_db
+from app.core.db import get_db
 from app.services.auth_service import register_user
 from app.services.workspace_service import create_workspace
 

@@ -2,7 +2,7 @@ from authlib.integrations.base_client.errors import MismatchingStateError, OAuth
 from flask import redirect
 import pytest
 
-from app.db import get_db
+from app.core.db import get_db
 from app.services.auth_service import (
     GoogleLinkRequiredError,
     complete_google_signin,

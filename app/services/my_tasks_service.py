@@ -1,4 +1,4 @@
-from app.models.my_tasks import get_tasks_assigned_to_user
+from app.repositories.my_tasks import get_tasks_assigned_to_user
 
 
 def list_my_tasks(user_id, avatar_url=None):

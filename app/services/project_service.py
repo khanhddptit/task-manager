@@ -1,5 +1,5 @@
-from app.db import write_transaction
-from app.models.project import (
+from app.core.db import write_transaction
+from app.repositories.project import (
     delete_project as delete_project_record,
     delete_project_member,
     get_project,

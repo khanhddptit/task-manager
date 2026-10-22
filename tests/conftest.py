@@ -1,7 +1,7 @@
 import pytest
 
 from app import create_app
-from app.db import init_db
+from app.core.db import init_db
 from app.services.auth_service import register_user
 
 

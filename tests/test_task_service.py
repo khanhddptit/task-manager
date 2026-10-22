@@ -1,7 +1,7 @@
 import pytest
 
-from app.db import get_db
-from app.models.project import insert_project_member
+from app.core.db import get_db
+from app.repositories.project import insert_project_member
 from app.services.auth_service import register_user
 from app.services.task_service import (
     InsufficientRoleError,

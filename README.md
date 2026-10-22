@@ -34,41 +34,28 @@ Không cần cài SQLite server, SQLAlchemy, Flask-Session hay Node.js. Flask t�
 ```text
 task-manager/
 ├── app/
-│   ├── __init__.py          # Application factory, đăng ký Blueprint và trang lỗi
-│   ├── config.py            # Cấu hình chung và đọc biến môi trường
-│   ├── db.py                # Kết nối SQLite, teardown, lệnh init-db
-│   ├── schema.sql           # Định nghĩa bảng
-│   ├── migrations.py        # Migration schema có version
-│   ├── indexes.sql          # Index tạo sau khi áp dụng migration
-│   ├── auth/
-│   │   └── routes.py        # Session, đăng nhập, hồ sơ và avatar API
-│   ├── main/
-│   │   ├── __init__.py
-│   │   └── routes.py        # Trang chủ, đăng nhập, đăng ký, cài đặt
-│   ├── tasks/
-│   │   ├── __init__.py     # Trang Kanban demo và API task
-│   │   └── routes.py        # Task API
-│   ├── notifications.py    # API thông báo cá nhân
-│   ├── models/
-│   │   ├── notification.py # Truy vấn notification
-│   │   ├── sprint.py       # Truy vấn Sprint và lịch sử task
-│   │   ├── task.py         # Truy vấn task
-│   │   └── user.py         # Truy vấn user
-│   ├── services/
-│   │   ├── auth_service.py # Nghiệp vụ auth và user profile
-│   │   ├── notification_service.py # Tạo và quản lý notification
-│   │   ├── sprint_service.py # Nghiệp vụ Sprint và tiến độ
-│   │   └── task_service.py # Nghiệp vụ task
-│   ├── templates/
-│   │   ├── base.html
-│   │   ├── login.html, register.html, settings.html
-│   │   ├── main/index.html
-│   │   ├── tasks/index.html
-│   │   ├── sprints/         # Sprint planning and progress pages
-│   │   └── errors/          # 404.html, 500.html
-│   └── static/
-│       ├── css/             # Auth, settings, Kanban, and Sprint styles
-│       └── js/              # Auth, settings, Kanban, and Sprint scripts
+│   ├── __init__.py           # Application factory và đăng ký Blueprint
+│   ├── core/                 # Cấu hình, SQLite, migration và schema
+│   │   ├── config.py
+│   │   ├── db.py
+│   │   ├── migrations.py
+│   │   ├── schema.sql
+│   │   └── indexes.sql
+│   ├── features/              # Tầng HTTP: Blueprint và route theo tính năng
+│   │   ├── auth/              # Route, validation và helpers xác thực
+│   │   ├── comments/
+│   │   ├── main/
+│   │   ├── notifications/
+│   │   ├── projects/
+│   │   ├── tasks/
+│   │   └── workspaces/
+│   ├── repositories/          # Truy vấn SQLite, một module cho từng nhóm dữ liệu
+│   ├── services/              # Nghiệp vụ và quy tắc ứng dụng
+│   └── web/                   # Tầng giao diện server-rendered
+│       ├── templates/         # Layout, trang, partials và lỗi
+│       └── static/
+│           ├── css/
+│           └── js/
 ├── tests/
 │   ├── conftest.py          # Fixture app/client, database tạm riêng từng test
 │   ├── test_app.py
@@ -83,6 +70,10 @@ task-manager/
 ├── requirements-dev.txt    # Dependency phát triển/kiểm thử
 └── README.md
 ```
+
+Request đi theo hướng `features (routes) → services → repositories → core/db`.
+Các template Jinja2 và tài nguyên CSS/JavaScript được Flask phục vụ từ `web/`;
+đây vẫn là frontend server-rendered, chưa tách thành SPA/build riêng.
 
 ## 4. Cài đặt và chạy trên Windows (PowerShell)
 
@@ -137,7 +128,7 @@ Biến môi trường hệ thống được ưu tiên hơn `.env`. Database mặ
 
 ### SQLite
 
-Schema nằm trong [app/schema.sql](app/schema.sql), sử dụng tên bảng **số ít**.
+Schema nằm trong [app/core/schema.sql](app/core/schema.sql), sử dụng tên bảng **số ít**.
 
 | Bảng               | Cột chính / chức năng                                                                                                                   |
 | ------------------ | --------------------------------------------------------------------------------------------------------------------------------------- |
@@ -204,7 +195,9 @@ Trước khi thêm form/request thay đổi dữ liệu, bổ sung CSRF protecti
 
 - Luồng xử lý: **route → service → model/query → SQLite**. Route xử lý HTTP, service xử lý nghiệp vụ, model chứa truy vấn; tránh nhồi SQL hoặc logic vào template.
 - Mỗi tính năng có Blueprint riêng; thêm module mới rồi đăng ký tại `create_app()`.
-- Ví dụ tính năng tiếp theo: `app/auth/routes.py`, `app/services/auth_service.py`, `app/models/user.py`, `app/templates/auth/` và test tương ứng.
+- Ví dụ khi mở rộng tính năng auth: `app/features/auth/routes.py`,
+  `app/services/auth_service.py`, `app/repositories/user.py`,
+  `app/web/templates/` và test tương ứng.
 - Import không được tự chạy server hoặc khởi tạo/xóa database. Dùng `current_app`, `g`, `get_db()` thay vì tạo global connection.
 - Code Python theo PEP 8, thụt lề 4 dấu cách; module/hàm/biến dùng `snake_case`, class `PascalCase`, hằng số `UPPER_SNAKE_CASE`.
 - Tên code tiếng Anh, nội dung giao diện và tài liệu tiếng Việt; file UTF-8. Chỉ comment khi logic cần giải thích.
@@ -218,7 +211,7 @@ Trước khi thêm form/request thay đổi dữ liệu, bổ sung CSRF protecti
 - Giữ autoescape của Jinja2, không dùng `|safe` với dữ liệu người dùng.
 - Flash message dùng các category `success`, `danger`, `warning`, `info`.
 - GET chỉ đọc; POST dùng cho thao tác ghi của form và redirect sau khi thành công (Post/Redirect/Get).
-- CSS riêng nằm trong `static/css/`; ưu tiên Bootstrap, tránh lặp inline CSS.
+- CSS riêng nằm trong `app/web/static/css/`; ưu tiên Bootstrap, tránh lặp inline CSS.
 
 ### Git và dependency
 

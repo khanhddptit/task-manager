@@ -2,7 +2,7 @@ import sqlite3
 
 import pytest
 
-from app.db import get_db
+from app.core.db import get_db
 from app.services.workspace_service import create_workspace
 
 

@@ -1,0 +1,9 @@
+from flask import Blueprint
+
+bp = Blueprint(
+    "projects",
+    __name__,
+    url_prefix="/workspaces/<int:workspace_id>/projects",
+)
+
+from app.features.projects import routes

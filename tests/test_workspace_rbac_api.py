@@ -3,8 +3,8 @@ from threading import Barrier
 
 import pytest
 
-from app.db import get_db
-from app.models.project import get_effective_project_role
+from app.core.db import get_db
+from app.repositories.project import get_effective_project_role
 from app.services.auth_service import register_user
 from app.services.workspace_service import (
     WorkspaceServiceError,

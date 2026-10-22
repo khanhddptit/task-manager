@@ -1,6 +1,6 @@
 import pytest
 
-from app.db import get_db
+from app.core.db import get_db
 from app.services.auth_service import register_user
 
 
@@ -713,7 +713,7 @@ def test_project_admin_strictly_requires_admin_role(client, seeded_env, app):
 def test_write_transaction_is_active_during_permission_check(app, seeded_env):
     from unittest.mock import patch
     import app.services.comment_service as cs
-    from app.db import get_db
+    from app.core.db import get_db
 
     ws_id = seeded_env["workspace_id"]
     p_id = seeded_env["project_id"]

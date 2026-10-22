@@ -1,6 +1,6 @@
 import pytest
 
-from app.db import get_db
+from app.core.db import get_db
 from app.services.auth_service import register_user
 from app.services.comment_service import create_comment
 from app.services.task_service import create_task, update_task

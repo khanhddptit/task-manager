@@ -1,6 +1,6 @@
 from io import BytesIO
 
-from app.db import get_db
+from app.core.db import get_db
 from app.services.auth_service import register_user
 
 

@@ -7,9 +7,9 @@ from flask import g, jsonify
 from itsdangerous import TimestampSigner
 from werkzeug.security import check_password_hash
 
-from app.auth.decorators import login_required
-from app.db import get_db
-from app.models.user import get_user_by_username
+from app.features.auth.decorators import login_required
+from app.core.db import get_db
+from app.repositories.user import get_user_by_username
 from app.services.auth_service import UsernameTakenError, register_user
 
 
@@ -342,7 +342,7 @@ def test_oversized_auth_request_returns_json(app, client):
 def test_internal_error_does_not_leak_details(app, client):
     app.config["PROPAGATE_EXCEPTIONS"] = False
     token = csrf_token(client)
-    with patch("app.auth.routes.authenticate_user", side_effect=RuntimeError("private-detail")):
+    with patch("app.features.auth.routes.authenticate_user", side_effect=RuntimeError("private-detail")):
         response = client.post("/auth/login", json={
             "username": "demo", "password": PASSWORD,
         }, headers={"X-CSRFToken": token})

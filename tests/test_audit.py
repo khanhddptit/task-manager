@@ -3,7 +3,7 @@ import sqlite3
 
 import pytest
 
-from app.db import get_db, init_db
+from app.core.db import get_db, init_db
 
 
 UTC_TIMESTAMP_FORMAT = re.compile(r"\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}")
@@ -194,7 +194,7 @@ from datetime import datetime
 
 import pytest
 
-from app.db import get_db
+from app.core.db import get_db
 from app.services.auth_service import register_user
 
 

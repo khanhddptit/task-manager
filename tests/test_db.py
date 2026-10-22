@@ -2,7 +2,7 @@ import sqlite3
 
 import pytest
 
-from app.db import get_db
+from app.core.db import get_db
 
 
 @pytest.fixture()
@@ -79,7 +79,7 @@ def test_init_db_creates_indexes_after_migrations(app):
 
 
 def test_member_invitation_migration_creates_table_for_legacy_database(app):
-    from app.migrations import apply_migrations
+    from app.core.migrations import apply_migrations
 
     with app.app_context():
         db = get_db()
@@ -101,7 +101,7 @@ def test_member_invitation_migration_creates_table_for_legacy_database(app):
 
 
 def test_notification_migration_creates_table_without_replacing_v11(app):
-    from app.migrations import apply_migrations
+    from app.core.migrations import apply_migrations
 
     with app.app_context():
         db = get_db()
@@ -126,7 +126,7 @@ def test_notification_migration_creates_table_without_replacing_v11(app):
 
 
 def test_password_reset_migration_creates_token_and_rate_limit_tables(app):
-    from app.migrations import apply_migrations
+    from app.core.migrations import apply_migrations
 
     with app.app_context():
         db = get_db()
@@ -194,7 +194,7 @@ def test_sprint_migration_preserves_tasks_comments_and_foreign_keys(seeded_app):
         db.execute("DELETE FROM schema_migration WHERE version IN (10, 14)")
         db.commit()
 
-        from app.migrations import apply_migrations
+        from app.core.migrations import apply_migrations
 
         apply_migrations(db)
         assert db.execute("SELECT title FROM task WHERE id = 1").fetchone()[0] == "First task"
@@ -204,7 +204,7 @@ def test_sprint_migration_preserves_tasks_comments_and_foreign_keys(seeded_app):
 
 
 def test_task_position_migration_preserves_rows_and_initializes_legacy_order(seeded_app):
-    from app.migrations import apply_migrations
+    from app.core.migrations import apply_migrations
 
     with seeded_app.app_context():
         db = get_db()
@@ -296,7 +296,7 @@ def test_init_db_rejects_legacy_workspace_with_multiple_owners(seeded_app):
         db.commit()
 
         with pytest.raises(RuntimeError, match="multiple Workspace Owners"):
-            from app.db import init_db
+            from app.core.db import init_db
 
             init_db()
 
@@ -331,7 +331,7 @@ def test_init_db_rejects_legacy_workspace_without_an_owner(seeded_app):
         db.commit()
 
         with pytest.raises(RuntimeError, match="no Workspace Owner"):
-            from app.db import init_db
+            from app.core.db import init_db
 
             init_db()
 
@@ -417,7 +417,7 @@ def test_init_db_migrates_legacy_audit_columns_before_indexes(app, tmp_path):
 
     app.config["DATABASE"] = str(database)
     with app.app_context():
-        from app.db import init_db
+        from app.core.db import init_db
 
         init_db()
         init_db()
@@ -586,7 +586,7 @@ def test_init_db_migrates_project_owner_to_admin_and_preserves_task_assignee(
 
     app.config["DATABASE"] = str(database)
     with app.app_context():
-        from app.db import init_db
+        from app.core.db import init_db
 
         init_db()
         db = get_db()

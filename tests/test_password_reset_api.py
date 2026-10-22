@@ -3,7 +3,7 @@ import smtplib
 from datetime import datetime, timedelta
 from urllib.parse import parse_qs
 
-from app.db import get_db
+from app.core.db import get_db
 from app.services.auth_service import register_user
 
 

@@ -1,4 +1,4 @@
-from app.db import get_db
+from app.core.db import get_db
 
 
 def get_csrf_token(client):

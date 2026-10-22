@@ -1,5 +1,5 @@
-from app.db import get_db, write_transaction
-from app.models.workspace import (
+from app.core.db import get_db, write_transaction
+from app.repositories.workspace import (
     count_workspace_admins,
     delete_workspace as delete_workspace_record,
     delete_workspace_member,

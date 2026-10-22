@@ -9,8 +9,8 @@ from email.message import EmailMessage
 from flask import current_app
 from werkzeug.security import check_password_hash, generate_password_hash
 
-from app.db import get_db, write_transaction
-from app.models.password_reset import (
+from app.core.db import get_db, write_transaction
+from app.repositories.password_reset import (
     consume_password_reset,
     create_password_reset,
     delete_active_password_resets,
@@ -22,7 +22,7 @@ from app.services.email_service import (
     smtp_is_configured,
     smtp_sender,
 )
-from app.models.user import (
+from app.repositories.user import (
     create_google_user,
     create_user,
     get_oauth_identity,

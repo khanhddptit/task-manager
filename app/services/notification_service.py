@@ -1,7 +1,7 @@
 import re
 
-from app.db import write_transaction
-from app.models.notification import (
+from app.core.db import write_transaction
+from app.repositories.notification import (
     clear_read_notifications as clear_read_notification_records,
     count_unread_notifications,
     get_project_mention_members,

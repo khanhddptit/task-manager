@@ -5,17 +5,20 @@ from flask import Flask, render_template, request
 from flask_wtf.csrf import CSRFError, CSRFProtect
 from werkzeug.exceptions import HTTPException
 
-from app.auth.responses import api_error
-
-from app.config import Config, environment_config
-
+from app.core.config import Config, environment_config
+from app.features.auth.responses import api_error
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 
 
 def create_app(test_config=None):
     load_dotenv(PROJECT_ROOT / ".env")
-    app = Flask(__name__, instance_path=str(PROJECT_ROOT / "instance"))
+    app = Flask(
+        __name__,
+        instance_path=str(PROJECT_ROOT / "instance"),
+        template_folder="web/templates",
+        static_folder="web/static",
+    )
     app.config.from_object(Config)
     app.config.from_mapping(
         DATABASE=str(Path(app.instance_path) / "task_manager.sqlite3"),
@@ -29,15 +32,15 @@ def create_app(test_config=None):
 
     Path(app.instance_path).mkdir(parents=True, exist_ok=True)
 
-    from app import db
+    from app.core import db
     from authlib.integrations.flask_client import OAuth
-    from app.auth import bp as auth_bp
-    from app.comments import bp as comments_bp
-    from app.main import bp as main_bp
-    from app.notifications import bp as notifications_bp
-    from app.projects import bp as projects_bp
-    from app.tasks import bp as tasks_bp, page_bp as tasks_page_bp
-    from app.workspaces import bp as workspaces_bp
+    from app.features.auth import bp as auth_bp
+    from app.features.comments import bp as comments_bp
+    from app.features.main import bp as main_bp
+    from app.features.notifications import bp as notifications_bp
+    from app.features.projects import bp as projects_bp
+    from app.features.tasks import bp as tasks_bp, page_bp as tasks_page_bp
+    from app.features.workspaces import bp as workspaces_bp
 
     db.init_app(app)
     app.register_blueprint(auth_bp)

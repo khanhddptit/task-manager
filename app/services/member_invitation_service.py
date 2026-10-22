@@ -4,14 +4,14 @@ import secrets
 from datetime import datetime, timedelta, timezone
 from email.message import EmailMessage
 
-from app.db import get_db, write_transaction
+from app.core.db import get_db, write_transaction
 from app.services.email_service import (
     configured_public_url as _configured_public_url,
     send_email as _send_email,
     smtp_is_configured,
     smtp_sender,
 )
-from app.models.member_invitation import (
+from app.repositories.member_invitation import (
     accept_member_invitation as accept_invitation_record,
     create_member_invitation as create_member_invitation_record,
     get_member_invitation_by_hash,
@@ -22,8 +22,8 @@ from app.models.member_invitation import (
     list_pending_member_invitations,
     revoke_member_invitation as revoke_invitation_record,
 )
-from app.models.project import get_project_for_user
-from app.models.workspace import get_workspace_member_role
+from app.repositories.project import get_project_for_user
+from app.repositories.workspace import get_workspace_member_role
 
 
 EMAIL_PATTERN = re.compile(

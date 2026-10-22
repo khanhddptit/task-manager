@@ -3,7 +3,7 @@ from urllib.parse import parse_qs, urlsplit
 
 import pytest
 
-from app.db import get_db
+from app.core.db import get_db
 from app.services.auth_service import register_user
 from app.services.project_service import create_project
 from app.services.workspace_service import create_workspace

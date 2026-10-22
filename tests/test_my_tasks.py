@@ -1,6 +1,6 @@
 from datetime import date, timedelta
 
-from app.db import get_db
+from app.core.db import get_db
 from app.services.auth_service import register_user
 from app.services.project_service import add_project_member, create_project
 from app.services.task_service import create_task
