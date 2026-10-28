@@ -11,6 +11,17 @@
     const clearReadButton = document.querySelector("#notification-clear-read");
     let previousUnreadCount = null;
 
+    const socket = io();
+    const userIdMeta = document.querySelector('meta[name="user-id"]');
+    if (userIdMeta) {
+        socket.emit('subscribe_notifications', { user_id: userIdMeta.content });
+    }
+
+    socket.on('new_notification', (notification) => {
+        showToast("Bạn có thông báo mới.");
+        refresh();
+    });
+
     function showToast(message) {
         window.showAppToast?.(message);
     }

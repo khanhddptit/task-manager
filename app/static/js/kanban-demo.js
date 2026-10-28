@@ -949,15 +949,6 @@ document.querySelectorAll("[data-view]").forEach((button) => {
     });
 });
 
-document.querySelector("#workspace-switcher").addEventListener("click", (event) => {
-    const menu = document.querySelector("#workspace-menu");
-    if (!availableWorkspaces.length) {
-        showToast("Đăng nhập để xem workspace của bạn.");
-        return;
-    }
-    menu.hidden = !menu.hidden;
-    event.currentTarget.setAttribute("aria-expanded", String(!menu.hidden));
-});
 
 document.querySelector("#project-switcher").addEventListener("click", (event) => {
     const children = document.querySelector("#project-children");

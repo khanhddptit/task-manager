@@ -1,6 +1,10 @@
 import re
+from email.message import EmailMessage
+from flask import current_app
 
 from app.db import write_transaction
+from app.services.email_service import send_email, smtp_sender
+from app.models.user import get_user_by_id
 from app.models.notification import (
     clear_read_notifications as clear_read_notification_records,
     count_unread_notifications,
@@ -39,15 +43,49 @@ def _create_task_notification(
 ):
     if recipient_id == actor_id:
         return
-    insert_notification(
+    link_path = _task_link(task["workspace_id"], task["project_id"], task["id"])
+    notification_id = insert_notification(
         recipient_id=recipient_id,
         actor_id=actor_id,
         event_type=event_type,
         title=title,
         message=message,
         metadata=metadata,
-        link_path=_task_link(task["workspace_id"], task["project_id"], task["id"]),
+        link_path=link_path,
     )
+
+    # 1. Emit via WebSocket
+    socketio = getattr(current_app, "socketio", None)
+    if socketio:
+        socketio.emit(
+            "new_notification",
+            {
+                "id": notification_id,
+                "title": title,
+                "message": message,
+                "event_type": event_type,
+                "link_path": link_path,
+                "is_read": False,
+                "created_at": "Vừa xong",
+            },
+            room=f"notifications_{recipient_id}",
+        )
+
+    # 2. Send Email if enabled for priority events
+    if current_app.config.get("EMAIL_ENABLED", False):
+        priority_events = {"task_assigned", "task_reassigned", "task_status_changed", "task_mentioned"}
+        if event_type in priority_events:
+            try:
+                recipient = get_user_by_id(recipient_id)
+                if recipient and recipient.get("email"):
+                    msg = EmailMessage()
+                    msg["Subject"] = f"[Task Manager] {title}"
+                    msg["From"] = smtp_sender() or "noreply@taskmanager.local"
+                    msg["To"] = recipient["email"]
+                    msg.set_content(f"{message}\n\nĐường dẫn: {link_path}")
+                    send_email(msg)
+            except Exception:
+                pass
 
 
 def notify_task_assignment(task, actor_id, previous_assignee_id=None):
