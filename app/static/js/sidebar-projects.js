@@ -147,17 +147,6 @@
         }
     }
 
-    function updateMembersNavLink(workspaces) {
-        const membersLink = document.querySelector("#workspace-members-link");
-        if (!membersLink) return;
-
-        if (requestedWorkspaceId) {
-            membersLink.href = `/workspaces/${requestedWorkspaceId}/members/page`;
-        } else if (workspaces.length === 1) {
-            membersLink.href = `/workspaces/${workspaces[0].id}/members/page`;
-        }
-    }
-
     // ── Project list ─────────────────────────────────────────────────────────
     async function loadProjects() {
         try {
@@ -166,9 +155,8 @@
             const result = await response.json();
             let workspaces = result.workspaces || [];
 
-            // Update workspace header & members link
+            // Update workspace header
             updateWorkspaceHeader(workspaces);
-            updateMembersNavLink(workspaces);
 
             if (requestedWorkspaceId) {
                 workspaces = workspaces.filter((workspace) => workspace.id === requestedWorkspaceId);

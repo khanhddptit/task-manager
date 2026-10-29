@@ -1,5 +1,6 @@
 <!doctype html>
 <html lang="vi">
+
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -7,72 +8,128 @@
     <title>Cài đặt tài khoản | Kairo</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Manrope:wght@500;600;700;800&display=swap" rel="stylesheet">
+    <link
+        href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Manrope:wght@500;600;700;800&display=swap"
+        rel="stylesheet">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/settings.css', v=4) }}">
 </head>
+
 <body class="settings-page">
     <a class="settings-skip" href="#settings-main">Đến nội dung chính</a>
     <header class="settings-topbar">
-        <a class="settings-brand" href="{{ url_for('main.index') }}"><span><i class="bi bi-layers-fill" aria-hidden="true"></i></span><strong>Kairo</strong></a>
-        <div class="settings-top-actions"><a href="{{ url_for('tasks.index') }}"><i class="bi bi-kanban" aria-hidden="true"></i> Bảng Kanban</a><button type="button" id="settings-theme-toggle" aria-label="Chuyển giao diện"><i class="bi bi-moon" aria-hidden="true"></i></button><button type="button" id="logout-button"><i class="bi bi-box-arrow-right" aria-hidden="true"></i> Đăng xuất</button></div>
+        <a class="settings-brand" href="{{ url_for('main.index') }}"><span><i class="bi bi-layers-fill"
+                    aria-hidden="true"></i></span><strong>Kairo</strong></a>
+        <div class="settings-top-actions"><a href="{{ url_for('tasks.index') }}"><i class="bi bi-kanban"
+                    aria-hidden="true"></i> Bảng Kanban</a><button type="button" id="settings-theme-toggle"
+                aria-label="Chuyển giao diện"><i class="bi bi-moon" aria-hidden="true"></i></button><button
+                type="button" id="logout-button"><i class="bi bi-box-arrow-right" aria-hidden="true"></i> Đăng
+                xuất</button></div>
     </header>
 
     <main class="settings-layout" id="settings-main">
-        <div class="settings-intro"><div><p class="settings-eyebrow">TÀI KHOẢN KAIRO</p><h1>Cài đặt tài khoản</h1><p>Quản lý thông tin cá nhân, mật khẩu và ảnh đại diện.</p></div><a class="back-link" href="{{ url_for('tasks.index') }}"><i class="bi bi-arrow-left" aria-hidden="true"></i> Quay lại board</a></div>
+        <div class="settings-intro">
+            <div>
+                <p class="settings-eyebrow">TÀI KHOẢN KAIRO</p>
+                <h1>Cài đặt tài khoản</h1>
+                <p>Quản lý thông tin cá nhân, mật khẩu và ảnh đại diện.</p>
+            </div><a class="back-link" href="{{ url_for('tasks.index') }}"><i class="bi bi-arrow-left"
+                    aria-hidden="true"></i> Quay lại board</a>
+        </div>
 
         <div class="settings-grid">
             <aside class="settings-nav" aria-label="Mục cài đặt">
                 <p>CÀI ĐẶT</p>
-                <a class="settings-nav-link active" href="#profile-section"><i class="bi bi-person-circle" aria-hidden="true"></i> Hồ sơ cá nhân</a>
-                <a class="settings-nav-link" href="#security-section"><i class="bi bi-shield-lock" aria-hidden="true"></i> Bảo mật</a>
-                <div class="settings-nav-note"><i class="bi bi-info-circle" aria-hidden="true"></i><span>Email là thông tin bắt buộc và phải chưa được tài khoản khác sử dụng.</span></div>
+                <a class="settings-nav-link active" href="#profile-section"><i class="bi bi-person-circle"
+                        aria-hidden="true"></i> Hồ sơ cá nhân</a>
+                <a class="settings-nav-link" href="#security-section"><i class="bi bi-shield-lock"
+                        aria-hidden="true"></i> Bảo mật</a>
+                <div class="settings-nav-note"><i class="bi bi-info-circle" aria-hidden="true"></i><span>Email là thông
+                        tin bắt buộc và phải chưa được tài khoản khác sử dụng.</span></div>
             </aside>
 
             <div class="settings-content">
                 <section class="settings-card" id="profile-section" aria-labelledby="profile-title">
-                    <header class="settings-card-heading"><div><span class="settings-card-icon"><i class="bi bi-person" aria-hidden="true"></i></span><div><h2 id="profile-title">Hồ sơ cá nhân</h2><p>Thông tin hiển thị trong workspace của bạn.</p></div></div></header>
+                    <header class="settings-card-heading">
+                        <div><span class="settings-card-icon"><i class="bi bi-person" aria-hidden="true"></i></span>
+                            <div>
+                                <h2 id="profile-title">Hồ sơ cá nhân</h2>
+                                <p>Thông tin hiển thị trong workspace của bạn.</p>
+                            </div>
+                        </div>
+                    </header>
                     <div class="avatar-row">
-                        <div class="avatar-preview" id="avatar-preview" aria-label="Ảnh đại diện"><span id="avatar-initials">KA</span><img id="avatar-image" alt="Ảnh đại diện" hidden></div>
-                        <div class="avatar-copy"><strong>Ảnh đại diện</strong><span>JPEG, PNG hoặc WebP · tối đa 2 MB</span><div class="avatar-actions"><label class="secondary-button" for="avatar-file"><i class="bi bi-upload" aria-hidden="true"></i> Chọn ảnh</label><input id="avatar-file" type="file" accept="image/jpeg,image/png,image/webp" hidden><button class="text-button" type="button" id="remove-avatar">Xóa ảnh</button></div></div>
+                        <div class="avatar-preview" id="avatar-preview" aria-label="Ảnh đại diện"><span
+                                id="avatar-initials">KA</span><img id="avatar-image" alt="Ảnh đại diện" hidden></div>
+                        <div class="avatar-copy"><strong>Ảnh đại diện</strong><span>JPEG, PNG hoặc WebP · tối đa 2
+                                MB</span>
+                            <div class="avatar-actions"><label class="secondary-button" for="avatar-file"><i
+                                        class="bi bi-upload" aria-hidden="true"></i> Chọn ảnh</label><input
+                                    id="avatar-file" type="file" accept="image/jpeg,image/png,image/webp" hidden><button
+                                    class="text-button" type="button" id="remove-avatar">Xóa ảnh</button></div>
+                        </div>
                     </div>
                     <p class="settings-feedback" id="avatar-feedback" role="status" aria-live="polite"></p>
                     <form id="profile-form" novalidate>
                         <div class="settings-fields">
-                            <label class="settings-field" for="display-name">Tên hiển thị<input id="display-name" name="display_name" type="text" maxlength="80" autocomplete="name" required></label>
-                            <label class="settings-field" for="email">Email<input id="email" name="email" type="email" maxlength="254" autocomplete="email" required></label>
-                            <label class="settings-field full-field" for="username">Tên đăng nhập <span>Không thể đổi</span><input id="username" name="username" type="text" readonly></label>
+                            <label class="settings-field" for="display-name">Tên hiển thị<input id="display-name"
+                                    name="display_name" type="text" maxlength="80" autocomplete="name" required></label>
+                            <label class="settings-field" for="email">Email<input id="email" name="email" type="email"
+                                    maxlength="254" autocomplete="email" required></label>
+                            <label class="settings-field full-field" for="username">Tên đăng nhập <span>Không thể
+                                    đổi</span><input id="username" name="username" type="text" readonly></label>
                         </div>
                         <p class="settings-feedback" id="profile-feedback" role="status" aria-live="polite"></p>
-                        <div class="settings-form-actions"><button class="primary-button" type="submit"><i class="bi bi-check2" aria-hidden="true"></i> Lưu thay đổi</button></div>
+                        <div class="settings-form-actions"><button class="primary-button" type="submit"><i
+                                    class="bi bi-check2" aria-hidden="true"></i> Lưu thay đổi</button></div>
                     </form>
                 </section>
 
                 <section class="settings-card" id="security-section" aria-labelledby="security-title">
-                    <header class="settings-card-heading"><div><span class="settings-card-icon"><i class="bi bi-shield-lock" aria-hidden="true"></i></span><div><h2 id="security-title">Bảo mật tài khoản</h2><p>Quản lý phương thức đăng nhập và mật khẩu.</p></div></div></header>
+                    <header class="settings-card-heading">
+                        <div><span class="settings-card-icon"><i class="bi bi-shield-lock"
+                                    aria-hidden="true"></i></span>
+                            <div>
+                                <h2 id="security-title">Bảo mật tài khoản</h2>
+                                <p>Quản lý phương thức đăng nhập và mật khẩu.</p>
+                            </div>
+                        </div>
+                    </header>
                     <div class="google-link-row">
                         <span class="google-link-icon"><i class="bi bi-google" aria-hidden="true"></i></span>
-                        <div class="google-link-copy"><strong>Google</strong><span id="google-link-status">Đang kiểm tra cấu hình…</span></div>
-                        <button class="secondary-button" type="button" id="google-link-button" disabled>Liên kết Google</button>
+                        <div class="google-link-copy"><strong>Google</strong><span id="google-link-status">Đang kiểm tra
+                                cấu hình…</span></div>
+                        <button class="secondary-button" type="button" id="google-link-button" disabled>Liên kết
+                            Google</button>
                     </div>
                     <p class="settings-feedback" id="google-feedback" role="status" aria-live="polite"></p>
                     <div class="security-divider"></div>
-                    <div id="password-login-note" class="password-login-note" hidden>Đây là tài khoản Google-only. Bạn có thể đặt mật khẩu local để đăng nhập bằng username.</div>
+                    <div id="password-login-note" class="password-login-note" hidden>Đây là tài khoản Google-only. Bạn
+                        có thể đặt mật khẩu local để đăng nhập bằng username.</div>
                     <form id="password-form" novalidate>
                         <div class="settings-fields password-fields">
-                            <label class="settings-field full-field" id="current-password-field" for="current-password">Mật khẩu hiện tại<input id="current-password" name="current_password" type="password" autocomplete="current-password" maxlength="128" required></label>
-                            <label class="settings-field" for="new-password">Mật khẩu mới<input id="new-password" name="new_password" type="password" autocomplete="new-password" minlength="8" maxlength="128" required><small>Từ 8 đến 128 ký tự.</small></label>
-                            <label class="settings-field" for="confirm-password">Nhập lại mật khẩu mới<input id="confirm-password" name="confirm_password" type="password" autocomplete="new-password" minlength="8" maxlength="128" required></label>
+                            <label class="settings-field full-field" id="current-password-field"
+                                for="current-password">Mật khẩu hiện tại<input id="current-password"
+                                    name="current_password" type="password" autocomplete="current-password"
+                                    maxlength="128" required></label>
+                            <label class="settings-field" for="new-password">Mật khẩu mới<input id="new-password"
+                                    name="new_password" type="password" autocomplete="new-password" minlength="8"
+                                    maxlength="128" required><small>Từ 8 đến 128 ký tự.</small></label>
+                            <label class="settings-field" for="confirm-password">Nhập lại mật khẩu mới<input
+                                    id="confirm-password" name="confirm_password" type="password"
+                                    autocomplete="new-password" minlength="8" maxlength="128" required></label>
                         </div>
                         <p class="settings-feedback" id="password-feedback" role="status" aria-live="polite"></p>
-                        <div class="settings-form-actions"><button class="primary-button" id="password-submit" type="submit"><i class="bi bi-key" aria-hidden="true"></i> Cập nhật mật khẩu</button></div>
+                        <div class="settings-form-actions"><button class="primary-button" id="password-submit"
+                                type="submit"><i class="bi bi-key" aria-hidden="true"></i> Cập nhật mật khẩu</button>
+                        </div>
                     </form>
                 </section>
             </div>
         </div>
-        <footer class="settings-footer">Kairo <span>·</span> Tài khoản của bạn, theo cách của bạn.</footer>
     </main>
     <script src="{{ url_for('static', filename='js/settings.js', v=8) }}" defer></script>
     <script src="{{ url_for('static', filename='js/theme-sync.js', v=1) }}" defer></script>
 </body>
+
 </html>

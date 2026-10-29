@@ -766,7 +766,6 @@ function updateBoardIdentity(user, workspace, project) {
     const projectQuery = `?workspace_id=${workspace.id}&project_id=${project.id}`;
     document.querySelector("#sprint-link").href = `/sprints/${projectQuery}`;
     document.querySelector("#progress-link").href = `/sprints/progress${projectQuery}`;
-    document.querySelector("#workspace-members-link").href = `/workspaces/${workspace.id}/members/page`;
     document.querySelector("#project-members-link").href = `/workspaces/${workspace.id}/projects/${project.id}/members/page`;
 }
 
@@ -871,7 +870,6 @@ async function loadLiveBoardData() {
         });
         updateBoardIdentity(me.user, workspace, project);
         renderLiveTasks(taskResult.tasks || [], members);
-        document.querySelector("#demo-badge-label").textContent = "DỮ LIỆU THẬT";
         startNotificationRefresh();
         const requestedTaskId = Number(query.get("task_id"));
         if (Number.isSafeInteger(requestedTaskId) && requestedTaskId > 0) {
