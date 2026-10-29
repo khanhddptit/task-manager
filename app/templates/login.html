@@ -63,7 +63,7 @@
                         <label for="username">Tên đăng nhập</label>
                         <div class="input-shell">
                             <i class="bi bi-person" aria-hidden="true"></i>
-                            <input id="username" name="username" type="text" autocomplete="username" autocapitalize="none" spellcheck="false" maxlength="32" placeholder="ten.dang.nhap" required>
+                            <input id="username" name="username" type="text" autocomplete="username" autocapitalize="none" spellcheck="false" maxlength="32" placeholder="Nhập tên đăng nhập" required>
                         </div>
                     </div>
                     <div class="field-group">
@@ -82,7 +82,6 @@
                 <button class="google-button" type="button" data-google-login disabled><i class="bi bi-google" aria-hidden="true"></i> Google</button>
                 <p class="oauth-note" id="google-login-status" role="status">Google OAuth chưa được cấu hình.</p>
                 <div class="signup-prompt">Chưa có tài khoản? <a href="{{ url_for('main.register') }}">Tạo tài khoản</a></div>
-                <a class="demo-link" href="{{ url_for('tasks.index', preview=1) }}"><span><i class="bi bi-play-circle" aria-hidden="true"></i> Xem trước giao diện</span><i class="bi bi-arrow-up-right" aria-hidden="true"></i></a>
             </div>
             <p class="form-footer">© 2026 Kairo <span>·</span> Làm việc cùng nhau, tiến xa hơn.</p>
         </section>

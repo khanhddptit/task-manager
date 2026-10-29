@@ -1,4 +1,3 @@
-{% set demo_preview = request.args.get('preview') == '1' and not g.user %}
 <aside class="sidebar" aria-label="Thanh bên">
     <a class="sidebar-brand" href="{{ url_for('main.index') }}">
         <span class="sidebar-brand-icon"><i class="bi bi-layers-fill" aria-hidden="true"></i></span>
@@ -6,8 +5,8 @@
     </a>
     <div class="workspace-picker">
         <button class="workspace-switcher" type="button" id="workspace-switcher" aria-label="Chọn workspace" aria-expanded="false" aria-controls="workspace-menu">
-            <span class="workspace-avatar" id="workspace-avatar">{% if demo_preview %}KS{% else %}K{% endif %}</span>
-            <span class="workspace-copy"><strong id="sidebar-workspace-name">{{ 'Kairo Studio' if demo_preview else ('Tất cả workspace' if request.endpoint == 'tasks.my_tasks_page' else 'Workspace') }}</strong><small id="workspace-role">{{ 'Bản xem trước' if demo_preview else ('Tất cả dự án' if request.endpoint == 'tasks.my_tasks_page' else 'Project') }}</small></span>
+            <span class="workspace-avatar" id="workspace-avatar">K</span>
+            <span class="workspace-copy"><strong id="sidebar-workspace-name">{{ 'Tất cả workspace' if request.endpoint == 'tasks.my_tasks_page' else 'Workspace' }}</strong><small id="workspace-role">{{ 'Tất cả dự án' if request.endpoint == 'tasks.my_tasks_page' else 'Project' }}</small></span>
             <i class="bi bi-chevron-down" aria-hidden="true"></i>
         </button>
         <div class="workspace-menu" id="workspace-menu" hidden></div>
@@ -23,22 +22,20 @@
             {% set top_members_url = url_for('main.member_directory') %}
         {% endif %}
         <a href="{{ top_members_url }}" class="nav-link{{ ' active' if request.endpoint in ['main.member_directory', 'main.workspace_members_page', 'main.project_members_page'] else '' }}" id="workspace-members-link"{% if request.endpoint in ['main.member_directory', 'main.workspace_members_page', 'main.project_members_page'] %} aria-current="page"{% endif %}><i class="bi bi-people" aria-hidden="true"></i><span>Thành viên</span></a>
-        <a href="{{ url_for('tasks.index', preview=1) if demo_preview else url_for('tasks.index') }}" class="nav-link{{ ' active' if request.endpoint == 'tasks.index' else '' }}"{% if request.endpoint == 'tasks.index' %} aria-current="page"{% endif %}><i class="bi bi-folder2" aria-hidden="true"></i><span>Dự án</span></a>
+        <a href="{{ url_for('tasks.index') }}" class="nav-link{{ ' active' if request.endpoint == 'tasks.index' else '' }}"{% if request.endpoint == 'tasks.index' %} aria-current="page"{% endif %}><i class="bi bi-folder2" aria-hidden="true"></i><span>Dự án</span></a>
     </nav>
     <div class="project-heading"><span>Dự án</span><span class="project-heading-actions"><button type="button" class="icon-button" id="project-picker-toggle" aria-label="Chọn dự án" aria-expanded="false" aria-controls="project-menu"><i class="bi bi-three-dots" aria-hidden="true"></i></button>{% if request.endpoint == 'tasks.index' %}<button type="button" aria-label="Tạo dự án" class="icon-button" id="project-create-button"><i class="bi bi-plus-lg" aria-hidden="true"></i></button>{% endif %}</span></div>
-    {% if not demo_preview %}<div class="project-list" id="project-list" aria-label="Danh sách dự án"></div>{% endif %}
-    <div class="project-tree"{% if not demo_preview %} hidden{% endif %}>
-        <button class="tree-project" type="button" id="project-switcher" aria-expanded="true" aria-controls="project-children"><i class="bi bi-chevron-down" aria-hidden="true"></i><span class="project-dot"></span><strong id="project-name">{{ 'Stride' if demo_preview else ('Tất cả dự án' if request.endpoint == 'tasks.my_tasks_page' else 'Dự án') }}</strong><small id="project-code">{{ 'TP' if demo_preview else '' }}</small></button>
+    <div class="project-list" id="project-list" aria-label="Danh sách dự án"></div>
+    <div class="project-tree" hidden>
+        <button class="tree-project" type="button" id="project-switcher" aria-expanded="true" aria-controls="project-children"><i class="bi bi-chevron-down" aria-hidden="true"></i><span class="project-dot"></span><strong id="project-name">{{ 'Tất cả dự án' if request.endpoint == 'tasks.my_tasks_page' else 'Dự án' }}</strong><small id="project-code"></small></button>
         <div class="project-menu" id="project-menu" hidden></div>
         <div class="project-children" id="project-children">
-            <a class="tree-item{{ ' selected' if request.endpoint == 'tasks.index' else '' }}" id="task-link" href="{{ url_for('tasks.index', preview=1) if demo_preview else url_for('tasks.index') }}"{% if request.endpoint == 'tasks.index' %} aria-current="page"{% endif %}><i class="bi bi-list-task" aria-hidden="true"></i><span>Task</span></a>
+            <a class="tree-item{{ ' selected' if request.endpoint == 'tasks.index' else '' }}" id="task-link" href="{{ url_for('tasks.index') }}"{% if request.endpoint == 'tasks.index' %} aria-current="page"{% endif %}><i class="bi bi-list-task" aria-hidden="true"></i><span>Task</span></a>
             <a class="tree-item{{ ' selected' if request.endpoint in ['main.workspace_members_page', 'main.project_members_page'] else '' }}" id="project-members-link" href="{% if request.endpoint == 'main.project_members_page' %}{{ url_for('main.project_members_page', workspace_id=request.view_args.workspace_id, project_id=request.view_args.project_id) }}{% elif request.endpoint == 'main.workspace_members_page' %}{{ url_for('main.workspace_members_page', workspace_id=request.view_args.workspace_id) }}{% else %}{{ url_for('main.member_directory') }}{% endif %}"{% if request.endpoint in ['main.workspace_members_page', 'main.project_members_page'] %} aria-current="page"{% endif %}><i class="bi bi-people" aria-hidden="true"></i><span>Thành viên</span></a>
             <a class="tree-item{{ ' selected' if request.endpoint == 'main.sprints' else '' }}" id="sprint-link" href="{{ url_for('main.sprints') }}"{% if request.endpoint == 'main.sprints' %} aria-current="page"{% endif %}><i class="bi bi-lightning-charge" aria-hidden="true"></i><span>Sprint</span></a>
         </div>
     </div>
-    {% if demo_preview %}
-        <a class="profile-button" href="{{ url_for('main.login') }}" aria-label="Đăng nhập để sử dụng tài khoản"><span class="profile-avatar" id="profile-avatar">KH</span><span class="profile-copy"><strong id="profile-name">Khách xem trước</strong><small id="profile-email">Tài khoản mẫu</small></span><i class="bi bi-chevron-down" aria-hidden="true"></i></a>
-    {% elif g.user %}
+    {% if g.user %}
         {% set account_name = g.user['display_name'] or g.user['username'] %}
         <div class="profile-menu-wrap">
             <div class="profile-menu" id="profile-menu" hidden>
@@ -52,7 +49,7 @@
         <a class="profile-button" href="{{ url_for('main.login') }}" aria-label="Đăng nhập tài khoản"><span class="profile-avatar" id="profile-avatar">?</span><span class="profile-copy"><strong id="profile-name">Chưa đăng nhập</strong><small id="profile-email">Đăng nhập để sử dụng</small></span><i class="bi bi-chevron-down" aria-hidden="true"></i></a>
     {% endif %}
 </aside>
-{% if not demo_preview %}<script src="{{ url_for('static', filename='js/sidebar-projects.js', v=1) }}" defer></script>{% endif %}
+<script src="{{ url_for('static', filename='js/sidebar-projects.js', v=1) }}" defer></script>
 <script src="{{ url_for('static', filename='js/theme-sync.js', v=1) }}" defer></script>
 <script src="{{ url_for('static', filename='js/app-notices.js', v=1) }}" defer></script>
 {% if g.user %}<script src="{{ url_for('static', filename='js/profile-menu.js', v=1) }}" defer></script>{% endif %}

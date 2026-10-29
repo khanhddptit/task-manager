@@ -10,7 +10,6 @@ from app import create_app
     ("/login", "Chào mừng trở lại"),
     ("/register", "Tạo tài khoản"),
     ("/settings", "Cài đặt tài khoản"),
-    ("/tasks/", "Bảng Kanban của dự án hiện tại."),
 ])
 def test_pages(client, path, text):
     response = client.get(path)
@@ -23,6 +22,23 @@ def test_home_redirects_anonymous_users_to_login(client):
     response = client.get("/")
     assert response.status_code == 302
     assert response.headers["Location"].endswith("/login")
+
+
+def test_kanban_requires_login(client):
+    response = client.get("/tasks/?preview=1")
+    assert response.status_code == 302
+    assert response.headers["Location"].endswith("/login")
+
+
+def test_authenticated_kanban_page_has_no_demo_preview(client, user_id):
+    with client.session_transaction() as stored_session:
+        stored_session["user_id"] = user_id
+
+    response = client.get("/tasks/")
+    html = response.get_data(as_text=True)
+    assert response.status_code == 200
+    assert "Bảng công việc" in html
+    assert "BẢN DEMO" not in html
 
 
 def test_login_page_includes_csrf_token(client):

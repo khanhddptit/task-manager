@@ -10,12 +10,9 @@ const notificationToggle = document.querySelector("#notification-toggle");
 const notificationPanel = document.querySelector("#notification-panel");
 const notificationList = document.querySelector("#notification-list");
 const notificationBadge = document.querySelector("#notification-badge");
-const isDemoPreview = document.body.dataset.demoPreview === "1";
-const originalTasks = [...document.querySelectorAll(".task-card")].map((card) => card.cloneNode(true));
 const taskLabels = { todo: "To Do", in_progress: "In Progress", review: "Review", done: "Done" };
 const statusClasses = { todo: "todo-dot", in_progress: "progress-dot", review: "review-dot", done: "done-dot" };
-let nextTaskNumber = 3;
-let canCreateTasks = isDemoPreview;
+let canCreateTasks = false;
 let notificationRefreshTimer = null;
 let lastUnreadNotificationCount = null;
 let sortAscending = true;
@@ -99,7 +96,8 @@ function applyFilters() {
         if (emptyButton) {
             emptyButton.hidden = totalCount > 0
                 || excludedByStatus
-                || Boolean(liveBoardContext && !canCreateTasks);
+                || !liveBoardContext
+                || !canCreateTasks;
         }
     });
 }
@@ -110,55 +108,12 @@ function updateBoard() {
         column.querySelector(".column-count").textContent = String(cards.length);
         const emptyButton = column.querySelector(".empty-add");
         if (emptyButton) {
-            emptyButton.hidden = cards.length > 0 || Boolean(liveBoardContext && !canCreateTasks);
+            emptyButton.hidden = cards.length > 0 || !liveBoardContext || !canCreateTasks;
         }
     });
     document.querySelector("#task-total").textContent = `${getCards().length} task`;
     applyFilters();
     renderList();
-}
-
-function addTaskCard({ title, status, priority }) {
-    const taskId = `TP-${nextTaskNumber++}`;
-    const card = document.createElement("article");
-    card.className = "task-card";
-    card.dataset.taskId = taskId;
-    card.dataset.displayId = taskId;
-    card.dataset.status = status;
-    card.dataset.assignee = "unassigned";
-    card.dataset.priority = priority;
-    card.tabIndex = 0;
-
-    const top = document.createElement("div");
-    top.className = "task-card-top";
-    const id = document.createElement("span");
-    id.className = "task-id";
-    id.textContent = taskId;
-    const menu = document.createElement("button");
-    menu.className = "task-menu";
-    menu.type = "button";
-    menu.setAttribute("aria-label", `Tùy chọn ${taskId}`);
-    menu.innerHTML = '<i class="bi bi-three-dots" aria-hidden="true"></i>';
-    top.append(id, menu);
-
-    const heading = document.createElement("h3");
-    heading.textContent = title;
-    const meta = document.createElement("div");
-    meta.className = "task-meta";
-    const priorityLabel = document.createElement("span");
-    priorityLabel.className = `priority ${priority}`;
-    const priorityDot = document.createElement("i");
-    const priorityText = document.createTextNode(` ${priority[0].toUpperCase()}${priority.slice(1)}`);
-    priorityLabel.append(priorityDot, priorityText);
-    meta.append(priorityLabel);
-    card.append(top, heading, meta);
-
-    const targetList = document.querySelector(`.task-list[data-status="${status}"]`);
-    targetList.prepend(card);
-    updateBoard();
-    showToast(liveBoardContext
-        ? `${taskId} được thêm tạm vào ${taskLabels[status]}; chưa lưu lên máy chủ.`
-        : `${taskId} đã được thêm vào ${taskLabels[status]}.`);
 }
 
 function renderList() {
@@ -206,9 +161,7 @@ function renderList() {
 
         const assignee = document.createElement("span");
         assignee.className = "list-assignee";
-        assignee.textContent = card.dataset.assigneeName || (
-            card.dataset.assignee === "sample" ? "Khách xem trước" : "Chưa giao"
-        );
+        assignee.textContent = card.dataset.assigneeName || "Chưa giao";
         row.append(taskName, status, priority, assignee);
         listBody.append(row);
     });
@@ -216,8 +169,8 @@ function renderList() {
 }
 
 function openTaskDialog(status = "todo", card = null) {
-    const isEditing = Boolean(card && liveBoardContext);
-    const isAdmin = !liveBoardContext || liveBoardContext.projectRole === "admin";
+    const isEditing = Boolean(card);
+    const isAdmin = liveBoardContext?.projectRole === "admin";
     const isAssignedMember = isEditing
         && liveBoardContext.projectRole === "member"
         && card.dataset.assignee === String(liveBoardContext.userId);
@@ -254,14 +207,12 @@ function openTaskDialog(status = "todo", card = null) {
     });
     taskForm.elements.status.disabled = isEditing && !isAdmin && !memberCanUpdateStatus;
     taskDialog.querySelector("#dialog-title").textContent = isEditing ? "Chỉnh sửa task" : "Tạo task mới";
-    taskDialog.querySelector("#dialog-project-label").textContent = liveBoardContext
-        ? `PROJECT / ${document.querySelector("#project-title").textContent}`
-        : "PROJECT / STRIDE";
+    taskDialog.querySelector("#dialog-project-label").textContent = `PROJECT / ${document.querySelector("#project-title").textContent}`;
     taskDialog.querySelector(".dialog-submit").textContent = isEditing ? "Lưu thay đổi" : "Tạo task";
     taskDialog.querySelector("#delete-task").hidden = !isEditing || !isAdmin;
-    taskDialog.querySelector("#dialog-note").textContent = liveBoardContext
-        ? (isAdmin ? "Thay đổi sẽ được lưu vào project." : "Bạn chỉ có thể đổi trạng thái task được giao cho mình.")
-        : "Bản demo: thay đổi sẽ được lưu tạm trong trình duyệt.";
+    taskDialog.querySelector("#dialog-note").textContent = isAdmin
+        ? "Thay đổi sẽ được lưu vào project."
+        : "Bạn chỉ có thể đổi trạng thái task được giao cho mình.";
     taskDialog.showModal();
     if (!isEditing || isAdmin) taskForm.elements.title.focus();
 }
@@ -807,16 +758,12 @@ async function persistLiveStatus(card, oldStatus, newStatus, sourceList, oldInde
 }
 
 async function loadLiveBoardData() {
-    const badgeLabel = document.querySelector("#demo-badge-label");
-    if (isDemoPreview) {
-        badgeLabel.textContent = "BẢN DEMO";
-        return;
-    }
+    const badgeLabel = document.querySelector("#board-status-label");
     badgeLabel.textContent = "KIỂM TRA TÀI KHOẢN…";
     try {
         const me = await readApiJson("/auth/me");
         if (!me) {
-            badgeLabel.textContent = "VUI LÒNG ĐĂNG NHẬP";
+            window.location.assign("/login");
             return;
         }
         updateProfileIdentity(me.user);
@@ -825,7 +772,7 @@ async function loadLiveBoardData() {
         const workspaces = workspaceResult.workspaces || [];
         availableWorkspaces = workspaces;
         if (!workspaces.length) {
-            document.querySelector("#demo-badge-label").textContent = "CHƯA CÓ WORKSPACE";
+            document.querySelector("#board-status-label").textContent = "CHƯA CÓ WORKSPACE";
             return;
         }
 
@@ -839,7 +786,7 @@ async function loadLiveBoardData() {
         availableProjects = projects;
         if (!projects.length) {
             renderProjectMenu(projects, null);
-            document.querySelector("#demo-badge-label").textContent = "CHƯA CÓ PROJECT";
+            document.querySelector("#board-status-label").textContent = "CHƯA CÓ PROJECT";
             document.querySelector(".workspace-copy strong").textContent = workspace.name;
             document.querySelector(".workspace-copy small").textContent = workspace.role || "Thành viên";
             return;
@@ -864,14 +811,13 @@ async function loadLiveBoardData() {
             sprints: sprintResult.sprints || [],
         };
         canCreateTasks = liveBoardContext.projectRole === "admin";
-        document.querySelector('[data-action="reset"]').hidden = true;
         document.querySelector("#sort-button").disabled = !canCreateTasks;
         document.querySelectorAll("[data-add-task]").forEach((button) => {
             button.hidden = !canCreateTasks;
         });
         updateBoardIdentity(me.user, workspace, project);
         renderLiveTasks(taskResult.tasks || [], members);
-        document.querySelector("#demo-badge-label").textContent = "DỮ LIỆU THẬT";
+        document.querySelector("#board-status-label").textContent = "DỮ LIỆU THẬT";
         startNotificationRefresh();
         const requestedTaskId = Number(query.get("task_id"));
         if (Number.isSafeInteger(requestedTaskId) && requestedTaskId > 0) {
@@ -899,7 +845,7 @@ async function loadLiveBoardData() {
 if (window.Sortable) {
     document.querySelectorAll(".task-list").forEach((list) => {
         new Sortable(list, {
-            group: "kairo-demo-tasks",
+            group: "kairo-tasks",
             animation: 180,
             fallbackOnBody: true,
             draggable: ".task-card",
@@ -1025,22 +971,6 @@ document.querySelector(".more-menu").addEventListener("click", (event) => {
         const doneColumn = document.querySelector('[data-column="done"]');
         doneColumn.hidden = !doneColumn.hidden;
         showToast(doneColumn.hidden ? "Đã ẩn cột Done." : "Đã hiện cột Done.");
-    }
-    if (action === "reset") {
-        if (liveBoardContext) {
-            window.location.reload();
-            return;
-        }
-        getCards().forEach((card) => card.remove());
-        originalTasks.forEach((card) => document.querySelector(`.task-list[data-status="${card.dataset.status}"]`).append(card.cloneNode(true)));
-        document.querySelector("#status-filter").value = "all";
-        document.querySelector("#assignee-filter").value = "all";
-        document.querySelector("#priority-filter").value = "all";
-        document.querySelector("#task-search").value = "";
-        document.querySelector('[data-column="done"]').hidden = false;
-        nextTaskNumber = 3;
-        updateBoard();
-        showToast("Đã khôi phục dữ liệu demo.");
     }
     document.querySelector(".more-menu").hidden = true;
     document.querySelector(".more-button").setAttribute("aria-expanded", "false");
@@ -1193,12 +1123,7 @@ taskForm.addEventListener("submit", async (event) => {
         due_date: String(formData.get("due_date") || "") || null,
     };
 
-    if (!liveBoardContext) {
-        addTaskCard({ title: payload.title, status, priority: payload.priority });
-        taskDialog.close();
-        taskForm.reset();
-        return;
-    }
+    if (!liveBoardContext) return;
 
     const memberStatusOnly = liveBoardContext.projectRole === "member";
     const savingPayload = memberStatusOnly ? { status } : payload;
