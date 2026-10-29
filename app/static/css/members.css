@@ -55,10 +55,10 @@ td { height: 70px; padding: 10px 22px; color: var(--text-soft); border-top: 1px 
 .role-badge { display: inline-flex; align-items: center; padding: 5px 9px; color: #b7c9e8; background: rgba(78, 140, 255, .1); border: 1px solid rgba(78, 140, 255, .18); border-radius: 20px; font-size: 11px; font-weight: 600; }
 .role-owner { color: #e7ce9c; background: rgba(210, 166, 75, .1); border-color: rgba(210, 166, 75, .2); }
 .role-admin { color: #c9b8ff; background: rgba(143, 110, 232, .12); border-color: rgba(143, 110, 232, .2); }
-.actions-heading, .actions-cell { width: 230px; text-align: right; }
-.actions-cell { display: flex; align-items: center; justify-content: flex-end; flex-wrap: wrap; gap: 8px; }
+.actions-heading, .actions-cell { width: 300px; text-align: right; }
+.actions-cell { display: flex; align-items: center; justify-content: flex-end; flex-wrap: nowrap; gap: 6px; }
 .actions-cell .text-button + .text-button { margin: 0; }
-.text-button { padding: 6px 2px; color: var(--text-soft); background: transparent; border: 0; cursor: pointer; font-size: 12px; }
+.text-button { padding: 6px 4px; color: var(--text-soft); background: transparent; border: 0; cursor: pointer; font-size: 12px; white-space: nowrap; }
 .text-button:hover { color: var(--text); }
 .text-button:disabled { opacity: .5; cursor: wait; }
 .danger-button:hover { color: #ff8585; }
@@ -96,8 +96,8 @@ td { height: 70px; padding: 10px 22px; color: var(--text-soft); border-top: 1px 
 .dialog-form input:focus, .dialog-form textarea:focus, .dialog-form select:focus { border-color: var(--blue); box-shadow: 0 0 0 3px rgba(78, 140, 255, .15); }
 .field-label-spaced { margin-top: 16px; }
 .field-label-spaced span { color: var(--text-dim); font-weight: 400; }
-.dialog-actions { display: flex; justify-content: space-between; gap: 10px; }
-.dialog-actions .dialog-submit { width: auto; flex: 1; }
+.dialog-actions { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.dialog-actions .dialog-submit { width: auto; flex: 1; margin-top: 0; }
 .secondary-button.danger-button { color: #ff9c9c; }
 .secondary-button.danger-button:hover { color: #fff; background: rgba(220, 65, 65, .22); border-color: rgba(255, 133, 133, .3); }
 .form-error { margin: 9px 0 0; font-size: 12px; }

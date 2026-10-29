@@ -274,6 +274,14 @@
         emptyState.hidden = visible.length !== 0;
     }
 
+    function updateMyTaskBadge() {
+        const badge = document.querySelector("#my-task-count");
+        if (!badge) return;
+        const count = tasks.filter((task) => task.status !== "done").length;
+        badge.textContent = count > 99 ? "99+" : String(count);
+        badge.hidden = count === 0;
+    }
+
     function setProfile(user) {
         const name = user.display_name || user.username || "Tài khoản";
         document.querySelector("#profile-name").textContent = name;
@@ -347,9 +355,11 @@
             await api(`/workspaces/${task.workspace_id}/projects/${task.project_id}/tasks/${task.id}`, "PATCH", { status: nextStatus });
             task.status = nextStatus;
             render();
+            updateMyTaskBadge();
         } catch (error) {
             task.status = previousStatus;
             render();
+            updateMyTaskBadge();
             showNotice(error.message || "Không thể cập nhật trạng thái. Trạng thái ban đầu đã được khôi phục.");
         }
     }
@@ -360,8 +370,11 @@
             setProfile(profile.user);
             tasks = result.tasks || [];
             render();
+            updateMyTaskBadge();
         } catch (error) {
             groupsRoot.setAttribute("aria-busy", "false");
+            const badge = document.querySelector("#my-task-count");
+            if (badge) badge.hidden = true;
             showNotice(error.message || "Không thể tải danh sách task.");
         }
     }

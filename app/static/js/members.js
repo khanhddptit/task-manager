@@ -334,7 +334,7 @@ if (memberPage) {
                     const changeRole = document.createElement("button");
                     changeRole.type = "button";
                     changeRole.className = "text-button";
-                    changeRole.textContent = nextRole === "admin" ? "Nâng lên Admin" : "Hạ xuống Member";
+                    changeRole.textContent = nextRole === "admin" ? "Lên Admin" : "Xuống Member";
                     changeRole.setAttribute("aria-label", `${changeRole.textContent}: ${name}`);
                     changeRole.addEventListener("click", async () => {
                         changeRole.disabled = true;
