@@ -1,4 +1,4 @@
-from flask import Blueprint, render_template
+from flask import Blueprint, g, redirect, render_template, url_for
 
 
 bp = Blueprint(
@@ -11,6 +11,8 @@ page_bp = Blueprint("tasks", __name__, url_prefix="/tasks")
 
 @page_bp.get("/")
 def index():
+    if g.user is None:
+        return redirect(url_for("main.login"))
     return render_template("tasks/index.html")
 
 

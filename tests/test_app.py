@@ -7,17 +7,38 @@ from app import create_app
 
 
 @pytest.mark.parametrize("path, text", [
-    ("/", "Một nhịp làm việc rõ ràng hơn"),
     ("/login", "Chào mừng trở lại"),
     ("/register", "Tạo tài khoản"),
     ("/settings", "Cài đặt tài khoản"),
-    ("/tasks/", "Bảng Kanban của dự án hiện tại."),
 ])
 def test_pages(client, path, text):
     response = client.get(path)
     assert response.status_code == 200
     assert text in response.get_data(as_text=True)
     assert 'lang="vi"' in response.get_data(as_text=True)
+
+
+def test_home_redirects_anonymous_users_to_login(client):
+    response = client.get("/")
+    assert response.status_code == 302
+    assert response.headers["Location"].endswith("/login")
+
+
+def test_kanban_requires_login(client):
+    response = client.get("/tasks/?preview=1")
+    assert response.status_code == 302
+    assert response.headers["Location"].endswith("/login")
+
+
+def test_authenticated_kanban_page_has_no_demo_preview(client, user_id):
+    with client.session_transaction() as stored_session:
+        stored_session["user_id"] = user_id
+
+    response = client.get("/tasks/")
+    html = response.get_data(as_text=True)
+    assert response.status_code == 200
+    assert "Bảng công việc" in html
+    assert "BẢN DEMO" not in html
 
 
 def test_login_page_includes_csrf_token(client):
@@ -81,9 +102,9 @@ def test_session_and_flash(app, client, user_id):
     with client.session_transaction() as stored_session:
         assert stored_session["user_id"] == user_id
 
-    response = client.get("/")
+    response = client.get("/missing-page")
     html = response.get_data(as_text=True)
     assert "alert-success" in html
     assert "&lt;script&gt;" in html
     assert "<script>alert" not in html
-    assert "&lt;script&gt;" not in client.get("/").get_data(as_text=True)
+    assert "&lt;script&gt;" not in client.get("/missing-page").get_data(as_text=True)

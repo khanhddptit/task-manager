@@ -125,10 +125,6 @@
 .google-button > i { color: #4285f4; font-size: 14px; }
 .oauth-note { min-height: 13px; margin: 6px 0 0; color: #9aa2af; text-align: center; font-size: 10px; }
 .signup-prompt { margin-top: 20px; padding-top: 18px; border-top: 1px solid #edf0f3; color: #9098a5; text-align: center; font-size: 12px; }
-.demo-link { display: flex; align-items: center; justify-content: space-between; margin-top: 21px; padding: 12px 13px; border: 1px solid #e8edf6; border-radius: 10px; color: #58667d; background: #f8faff; font-size: 12px; text-decoration: none; transition: border-color .18s ease, color .18s ease, background .18s ease; }
-.demo-link span { display: flex; align-items: center; gap: 8px; }
-.demo-link span i { color: var(--kairo-blue); font-size: 15px; }
-.demo-link:hover { border-color: #cbd9ff; color: var(--kairo-blue-dark); background: #f2f6ff; }
 .form-footer { position: absolute; right: 20px; bottom: 20px; left: 20px; margin: 0; color: #a6adb8; text-align: center; font-size: 11px; }
 .form-footer span { margin: 0 5px; color: #d1d5dc; }
 

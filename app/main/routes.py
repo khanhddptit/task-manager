@@ -8,7 +8,7 @@ bp = Blueprint("main", __name__)
 def index():
     if g.user is not None:
         return redirect(url_for("tasks.my_tasks_page"))
-    return render_template("main/index.html")
+    return redirect(url_for("main.login"))
 
 
 @bp.get("/login")
