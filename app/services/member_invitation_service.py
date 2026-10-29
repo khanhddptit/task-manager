@@ -95,14 +95,69 @@ def _send_invitation_email(email, invite_url, scope_name):
         return "not_configured"
 
     message = EmailMessage()
-    message["Subject"] = "Kairo membership invitation"
+    message["Subject"] = f"[Kairo Task Manager] Lời mời tham gia {scope_name}"
     message["From"] = sender
     message["To"] = email
-    message.set_content(
-        f"Bạn được mời tham gia {scope_name} trên Kairo với quyền Member.\n\n"
-        f"Mở liên kết để chấp nhận lời mời: {invite_url}\n\n"
-        "Liên kết chỉ có thể được sử dụng một lần và sẽ hết hạn theo thời hạn hiển thị trong ứng dụng."
+    
+    # 1. Plain Text
+    text_content = (
+        f"Xin chào,\n\n"
+        f"Bạn nhận được lời mời tham gia vào \"{scope_name}\" trên Kairo Task Manager với vai trò Thành viên (Member).\n\n"
+        f"Để chấp nhận lời mời, vui lòng nhấp vào liên kết bên dưới:\n"
+        f"{invite_url}\n\n"
+        f"Lưu ý:\n"
+        f"- Đăng nhập bằng chính email này ({email}) để hoàn tất chấp nhận.\n"
+        f"- Liên kết này chỉ có hiệu lực một lần và sẽ hết hạn sau 7 ngày.\n\n"
+        f"Trân trọng,\n"
+        f"Đội ngũ Kairo"
     )
+    message.set_content(text_content)
+
+    # 2. HTML format
+    html_content = f"""\
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <style>
+        body {{ font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; line-height: 1.6; color: #333333; margin: 0; padding: 0; }}
+        .container {{ max-width: 600px; margin: 20px auto; padding: 24px; border: 1px solid #e0e0e0; border-radius: 8px; background-color: #ffffff; }}
+        .header {{ border-bottom: 2px solid #0d6efd; padding-bottom: 12px; margin-bottom: 20px; }}
+        .header h2 {{ color: #0d6efd; margin: 0; font-size: 22px; }}
+        .content {{ font-size: 15px; margin-bottom: 24px; }}
+        .btn-container {{ text-align: center; margin: 28px 0; }}
+        .btn {{ display: inline-block; background-color: #0d6efd; color: #ffffff !important; padding: 12px 28px; text-decoration: none; font-weight: bold; border-radius: 6px; font-size: 15px; }}
+        .note {{ font-size: 13px; color: #6c757d; background-color: #f8f9fa; padding: 12px 16px; border-left: 4px solid #0d6efd; border-radius: 4px; margin-top: 20px; }}
+        .footer {{ font-size: 12px; color: #888888; text-align: center; margin-top: 28px; border-top: 1px solid #eeeeee; padding-top: 16px; }}
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h2>Kairo Task Manager</h2>
+        </div>
+        <div class="content">
+            <p>Xin chào,</p>
+            <p>Bạn đã nhận được lời mời tham gia vào không gian làm việc <strong>{scope_name}</strong> với vai trò là <strong>Member</strong>.</p>
+            <div class="btn-container">
+                <a href="{invite_url}" class="btn">Chấp nhận lời mời</a>
+            </div>
+            <p>Hoặc bạn có thể sao chép liên kết dưới đây và dán vào trình duyệt:</p>
+            <p style="word-break: break-all; color: #0d6efd;"><a href="{invite_url}">{invite_url}</a></p>
+            <div class="note">
+                <strong>Lưu ý:</strong><br>
+                • Bạn cần đăng nhập tài khoản bằng email <code>{email}</code> để chấp nhận lời mời này.<br>
+                • Liên kết chỉ sử dụng được 01 lần và sẽ hết hạn sau 7 ngày.
+            </div>
+        </div>
+        <div class="footer">
+            Email này được gửi tự động từ hệ thống Kairo Task Manager. Vui lòng không phản hồi email này.
+        </div>
+    </div>
+</body>
+</html>
+"""
+    message.add_alternative(html_content, subtype="html")
     return _send_email(message)
 
 

@@ -1,7 +1,9 @@
+import os
 from pathlib import Path
 
 from dotenv import load_dotenv
 from flask import Flask, render_template, request
+from flask_socketio import SocketIO
 from flask_wtf.csrf import CSRFError, CSRFProtect
 from werkzeug.exceptions import HTTPException
 
@@ -28,6 +30,11 @@ def create_app(test_config=None):
         raise RuntimeError("Set SECRET_KEY in .env or the environment before starting.")
 
     Path(app.instance_path).mkdir(parents=True, exist_ok=True)
+
+    socketio = SocketIO(app, cors_allowed_origins="*", async_mode="eventlet")
+    app.socketio = socketio
+    from app.sockets import init_sockets
+    init_sockets(socketio)
 
     from app import db
     from authlib.integrations.flask_client import OAuth

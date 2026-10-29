@@ -15,7 +15,14 @@
     <nav class="primary-nav" aria-label="Điều hướng workspace">
         <a href="{{ url_for('tasks.my_tasks_page') }}" class="nav-link{{ ' active' if request.endpoint == 'tasks.my_tasks_page' else '' }}" id="my-tasks-link"{% if request.endpoint == 'tasks.my_tasks_page' %} aria-current="page"{% endif %}><i class="bi bi-check2-square" aria-hidden="true"></i><span>Việc của tôi</span><span class="nav-count" id="my-task-count" hidden>0</span></a>
         <a href="{{ url_for('main.sprint_progress') }}" class="nav-link{{ ' active' if request.endpoint == 'main.sprint_progress' else '' }}" id="progress-link"{% if request.endpoint == 'main.sprint_progress' %} aria-current="page"{% endif %}><i class="bi bi-bar-chart" aria-hidden="true"></i><span>Tiến độ</span></a>
-        <a href="{{ url_for('main.member_directory') }}" class="nav-link{{ ' active' if request.endpoint in ['main.member_directory', 'main.workspace_members_page', 'main.project_members_page'] else '' }}" id="workspace-members-link"{% if request.endpoint in ['main.member_directory', 'main.workspace_members_page', 'main.project_members_page'] %} aria-current="page"{% endif %}><i class="bi bi-people" aria-hidden="true"></i><span>Thành viên</span></a>
+        {% if request.endpoint == 'main.project_members_page' and request.view_args.get('workspace_id') and request.view_args.get('project_id') %}
+            {% set top_members_url = url_for('main.project_members_page', workspace_id=request.view_args.workspace_id, project_id=request.view_args.project_id) %}
+        {% elif request.endpoint == 'main.workspace_members_page' and request.view_args.get('workspace_id') %}
+            {% set top_members_url = url_for('main.workspace_members_page', workspace_id=request.view_args.workspace_id) %}
+        {% else %}
+            {% set top_members_url = url_for('main.member_directory') %}
+        {% endif %}
+        <a href="{{ top_members_url }}" class="nav-link{{ ' active' if request.endpoint in ['main.member_directory', 'main.workspace_members_page', 'main.project_members_page'] else '' }}" id="workspace-members-link"{% if request.endpoint in ['main.member_directory', 'main.workspace_members_page', 'main.project_members_page'] %} aria-current="page"{% endif %}><i class="bi bi-people" aria-hidden="true"></i><span>Thành viên</span></a>
         <a href="{{ url_for('tasks.index', preview=1) if demo_preview else url_for('tasks.index') }}" class="nav-link{{ ' active' if request.endpoint == 'tasks.index' else '' }}"{% if request.endpoint == 'tasks.index' %} aria-current="page"{% endif %}><i class="bi bi-folder2" aria-hidden="true"></i><span>Dự án</span></a>
     </nav>
     <div class="project-heading"><span>Dự án</span><span class="project-heading-actions"><button type="button" class="icon-button" id="project-picker-toggle" aria-label="Chọn dự án" aria-expanded="false" aria-controls="project-menu"><i class="bi bi-three-dots" aria-hidden="true"></i></button>{% if request.endpoint == 'tasks.index' %}<button type="button" aria-label="Tạo dự án" class="icon-button" id="project-create-button"><i class="bi bi-plus-lg" aria-hidden="true"></i></button>{% endif %}</span></div>
