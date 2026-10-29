@@ -5,7 +5,7 @@ Bộ khung dùng chung cho team phát triển ứng dụng quản lý công vi�
 ## 1. Phạm vi hiện tại
 
 - Application factory `create_app()` và Blueprint riêng cho từng module.
-- Trang chủ, đăng nhập, đăng ký, cài đặt tài khoản và bảng Kanban demo bằng Jinja2/CSS tùy chỉnh.
+- Trang chủ chuyển người chưa đăng nhập đến trang đăng nhập; giao diện đăng nhập, đăng ký, cài đặt tài khoản và bảng Kanban dùng Jinja2/CSS tùy chỉnh.
 - API đăng nhập, phân quyền workspace/project, CRUD task và thông báo trong ứng dụng; các API được kiểm thử bằng pytest.
 - Kết nối SQLite theo application context, tự đóng kết nối và bật khóa ngoại.
 - Schema gồm các bảng `user`, `oauth_identity`, `workspace`, `workspace_member`, `project`, `project_member`, `member_invitation`, `password_reset_token`, `password_reset_attempt`, `sprint`, `sprint_task_history`, `task`, `comment`, `notification` và bảng `schema_migration`; lệnh `init-db` áp dụng migration và tạo index, không xóa dữ liệu hiện có.
