@@ -21,8 +21,10 @@
         <p class="subtitle">Đăng nhập bằng đúng email được mời để xác nhận quyền thành viên.</p>
         <p id="accept-message" class="notice" role="status" aria-live="polite">Liên kết chỉ sử dụng được một lần và có thời hạn.</p>
         <button id="accept-invitation" class="primary-button" type="button">Chấp nhận lời mời</button>
-        <div class="accept-account-links"><a class="accept-login" target="_blank" rel="noopener" href="{{ url_for('main.login') }}">Đăng nhập bằng email được mời</a><a class="accept-login" target="_blank" rel="noopener" href="{{ url_for('main.register') }}">Đăng ký bằng email được mời</a></div>
+        <div class="accept-account-links"><a class="accept-login" target="_blank" rel="noopener" href="{{ url_for('auth_pages.login') }}">Đăng nhập bằng email được mời</a><a class="accept-login" target="_blank" rel="noopener" href="{{ url_for('auth_pages.register') }}">Đăng ký bằng email được mời</a></div>
     </main>
-    <script src="{{ url_for('static', filename='js/members.js', v=3) }}" defer></script>
+    <script src="{{ url_for('static', filename='js/utils.js', v=1) }}" defer></script>
+    <script src="{{ url_for('static', filename='js/members/shared.js', v=1) }}" defer></script>
+    <script src="{{ url_for('static', filename='js/members/invitation-accept.js', v=1) }}" defer></script>
 </body>
 </html>

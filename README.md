@@ -41,13 +41,22 @@ task-manager/
 │   ├── migrations.py        # Migration schema có version
 │   ├── indexes.sql          # Index tạo sau khi áp dụng migration
 │   ├── auth/
-│   │   └── routes.py        # Session, đăng nhập, hồ sơ và avatar API
+│   │   ├── pages.py         # Trang đăng nhập, đăng ký và đặt lại mật khẩu
+│   │   └── routes.py        # Session, hồ sơ và avatar API
+│   ├── account/
+│   │   └── pages.py         # Trang cài đặt tài khoản
 │   ├── main/
 │   │   ├── __init__.py
-│   │   └── routes.py        # Trang chủ, đăng nhập, đăng ký, cài đặt
+│   │   └── routes.py        # Trang chủ
+│   ├── projects/
+│   │   └── pages.py         # Trang quản lý thành viên project
+│   ├── sprints/
+│   │   └── pages.py         # Danh sách và tiến độ Sprint
 │   ├── tasks/
 │   │   ├── __init__.py     # Trang Kanban demo và API task
 │   │   └── routes.py        # Task API
+│   ├── workspaces/
+│   │   └── pages.py         # Trang thành viên workspace và nhận lời mời
 │   ├── notifications.py    # API thông báo cá nhân
 │   ├── models/
 │   │   ├── notification.py # Truy vấn notification
@@ -61,14 +70,26 @@ task-manager/
 │   │   └── task_service.py # Nghiệp vụ task
 │   ├── templates/
 │   │   ├── base.html
-│   │   ├── login.html, register.html, settings.html
-│   │   ├── main/index.html
-│   │   ├── tasks/index.html
-│   │   ├── sprints/         # Sprint planning and progress pages
-│   │   └── errors/          # 404.html, 500.html
+│   │   ├── account/settings.html
+│   │   ├── auth/             # login.html, register.html, password-reset.html
+│   │   ├── errors/           # 404.html, 500.html
+│   │   ├── members/          # accept.html, directory.html, manage.html
+│   │   ├── partials/
+│   │   │   ├── layout/       # app-sidebar.html
+│   │   │   ├── notifications/# panel.html
+│   │   │   └── tasks/        # Task and project dialogs
+│   │   ├── sprints/          # list.html, progress.html
+│   │   └── tasks/            # board.html (Kanban), my.html (personal tasks)
 │   └── static/
-│       ├── css/             # Auth, settings, Kanban, and Sprint styles
-│       └── js/              # Auth, settings, Kanban, and Sprint scripts
+│       ├── css/              # Auth, settings, Kanban, and Sprint styles
+│       ├── js/
+│       │   ├── account/      # Cài đặt tài khoản
+│       │   ├── auth/         # Đăng nhập, đăng ký và đặt lại mật khẩu
+│       │   ├── kanban/       # Board view, task data/cards/comments, interactions
+│       │   ├── members/      # Shared helpers, management, directory, invitations
+│       │   ├── sprints/      # Entry point, danh sách và biểu đồ tiến độ
+│       │   ├── tasks/        # Task cá nhân
+│       │   └── utils.js      # Helper dùng chung
 ├── tests/
 │   ├── conftest.py          # Fixture app/client, database tạm riêng từng test
 │   ├── test_app.py

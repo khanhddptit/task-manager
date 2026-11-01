@@ -1,0 +1,12 @@
+<dialog class="task-dialog" id="task-dialog" aria-labelledby="dialog-title">
+    <form id="new-task-form" method="dialog">
+        <div class="dialog-heading"><div><p id="dialog-project-label">PROJECT / STRIDE</p><h2 id="dialog-title">Tạo task mới</h2></div><button type="button" class="dialog-close" aria-label="Đóng"><i class="bi bi-x-lg" aria-hidden="true"></i></button></div>
+        <label class="dialog-field">Tên task<input name="title" maxlength="255" required placeholder="Ví dụ: Hoàn thiện trang dashboard"></label>
+        <label class="dialog-field">Mô tả<textarea name="description" rows="3" placeholder="Mô tả ngắn về công việc"></textarea></label>
+        <div class="dialog-grid"><label class="dialog-field">Trạng thái<select name="status"><option value="todo">To Do</option><option value="in_progress">In Progress</option><option value="review">Review</option><option value="done">Done</option></select></label><label class="dialog-field">Ưu tiên<select name="priority"><option value="low">Low</option><option value="medium" selected>Medium</option><option value="high">High</option></select></label></div>
+        <div class="dialog-grid"><label class="dialog-field">Sprint<select name="sprint_id"><option value="none">Backlog / chưa có Sprint</option></select></label><label class="dialog-field">Người phụ trách<select name="assignee_id"><option value="unassigned">Chưa giao</option></select></label></div>
+        <label class="dialog-field">Hạn hoàn thành<input name="due_date" type="date"></label>
+        <div class="dialog-actions"><button type="button" class="text-button delete-task-button" id="delete-task" hidden>Xóa task</button><span class="dialog-actions-spacer"></span><button type="button" class="secondary-button dialog-cancel">Hủy</button><button type="submit" class="primary-button dialog-submit">Tạo task</button></div>
+        <p class="dialog-note" id="dialog-note">Thay đổi sẽ được lưu vào project.</p>
+    </form>
+</dialog>

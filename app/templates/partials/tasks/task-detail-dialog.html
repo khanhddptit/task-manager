@@ -1,0 +1,19 @@
+<dialog class="task-detail-dialog" id="task-detail-dialog" aria-labelledby="task-detail-title">
+    <div class="task-detail-content">
+        <header class="task-detail-heading"><div><p id="task-detail-id">TASK</p><h2 id="task-detail-title"></h2></div><button type="button" class="dialog-close" data-detail-close aria-label="Đóng"><i class="bi bi-x-lg" aria-hidden="true"></i></button></header>
+        <p class="task-detail-description" id="task-detail-description"></p>
+        <div class="task-detail-grid">
+            <div><span>Trạng thái</span><strong id="task-detail-status"></strong></div>
+            <div><span>Ưu tiên</span><strong id="task-detail-priority"></strong></div>
+            <div><span>Người phụ trách</span><strong id="task-detail-assignee"></strong></div>
+            <div><span>Hạn hoàn thành</span><strong id="task-detail-due"></strong></div>
+            <div class="task-detail-sprint-row"><span>Sprint</span><strong id="task-detail-sprint"></strong></div>
+        </div>
+        <section class="task-comments" id="task-comments">
+            <div class="task-comments-heading"><h3>Bình luận</h3><span id="task-comment-count">0</span></div>
+            <div class="task-comment-list" id="task-comment-list" aria-live="polite"></div>
+            <form id="task-comment-form"><label for="task-comment-input">Thêm bình luận</label><textarea id="task-comment-input" name="content" rows="3" maxlength="5000" placeholder="Viết bình luận cho task…" required></textarea><p class="task-comment-error" id="task-comment-error" role="alert" hidden></p><button type="submit" class="secondary-button">Gửi bình luận</button></form>
+        </section>
+        <div class="task-detail-actions"><button type="button" class="secondary-button" data-detail-close>Đóng</button><button type="button" class="primary-button" id="task-detail-edit"><i class="bi bi-pencil" aria-hidden="true"></i> Chỉnh sửa</button></div>
+    </div>
+</dialog>

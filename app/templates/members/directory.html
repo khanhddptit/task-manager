@@ -15,13 +15,13 @@
     <link rel="stylesheet" href="{{ url_for('static', filename='css/notifications.css', v=2) }}">
 </head>
 <body class="members-page kanban-page member-directory" data-directory-url="{{ workspaces_url }}">
-    {% include 'partials/app-sidebar.html' %}
+    {% include 'partials/layout/app-sidebar.html' %}
     <div class="app-shell">
     <header class="members-topbar">
         <div class="topbar-tools">
             <span class="back-link">Thành viên</span>
             <button class="theme-toggle" type="button" aria-label="Chuyển giao diện"><i class="bi bi-moon" aria-hidden="true"></i></button>
-            {% include 'partials/notifications.html' %}
+            {% include 'partials/notifications/panel.html' %}
         </div>
     </header>
     <main class="members-main">
@@ -44,7 +44,9 @@
             <div class="dialog-actions"><button id="workspace-delete" class="secondary-button danger-button" type="button" hidden>Xóa Workspace</button><button class="primary-button dialog-submit" type="submit">Tạo Workspace</button></div>
         </form>
     </dialog>
-    <script src="{{ url_for('static', filename='js/members.js', v=6) }}" defer></script>
+    <!-- Shared helpers must load before this page's workspace-directory code. -->
+    <script src="{{ url_for('static', filename='js/members/shared.js', v=1) }}" defer></script>
+    <script src="{{ url_for('static', filename='js/members/directory.js', v=1) }}" defer></script>
     <script src="{{ url_for('static', filename='js/notifications.js', v=7) }}" defer></script>
 </body>
 </html>

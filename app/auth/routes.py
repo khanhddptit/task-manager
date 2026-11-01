@@ -162,7 +162,7 @@ def password_reset_complete():
 
 
 def _google_error_redirect(code, linking=False):
-    endpoint = "main.user_settings" if linking else "main.login"
+    endpoint = "account_pages.settings" if linking else "auth_pages.login"
     return redirect(url_for(endpoint, oauth_error=code))
 
 
@@ -214,7 +214,7 @@ def google_status():
 @bp.get("/google")
 def google_login():
     if g.user is not None:
-        return redirect(url_for("main.user_settings"))
+        return redirect(url_for("account_pages.settings"))
     session.pop("google_link_user_id", None)
     client = _google_client()
     if client is None:
@@ -272,7 +272,7 @@ def google_callback():
             session.pop("google_link_user_id", None)
             return _google_error_redirect("google_email_in_use", linking=True)
         session.pop("google_link_user_id", None)
-        return redirect(url_for("main.user_settings", google="linked"))
+        return redirect(url_for("account_pages.settings", google="linked"))
 
     try:
         user = complete_google_signin(subject, email, display_name)

@@ -15,7 +15,8 @@ instance/
 *.sqlite
 *.sqlite3
 *.db
-
+*.md
+*.pdf
 # IDE / OS
 .idea/
 .vscode/

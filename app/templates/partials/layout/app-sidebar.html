@@ -13,15 +13,15 @@
     </div>
     <nav class="primary-nav" aria-label="Điều hướng workspace">
         <a href="{{ url_for('tasks.my_tasks_page') }}" class="nav-link{{ ' active' if request.endpoint == 'tasks.my_tasks_page' else '' }}" id="my-tasks-link"{% if request.endpoint == 'tasks.my_tasks_page' %} aria-current="page"{% endif %}><i class="bi bi-check2-square" aria-hidden="true"></i><span>Việc của tôi</span><span class="nav-count" id="my-task-count" hidden>0</span></a>
-        <a href="{{ url_for('main.sprint_progress') }}" class="nav-link{{ ' active' if request.endpoint == 'main.sprint_progress' else '' }}" id="progress-link"{% if request.endpoint == 'main.sprint_progress' %} aria-current="page"{% endif %}><i class="bi bi-bar-chart" aria-hidden="true"></i><span>Tiến độ</span></a>
-        {% if request.endpoint == 'main.project_members_page' and request.view_args.get('workspace_id') and request.view_args.get('project_id') %}
-            {% set top_members_url = url_for('main.project_members_page', workspace_id=request.view_args.workspace_id, project_id=request.view_args.project_id) %}
-        {% elif request.endpoint == 'main.workspace_members_page' and request.view_args.get('workspace_id') %}
-            {% set top_members_url = url_for('main.workspace_members_page', workspace_id=request.view_args.workspace_id) %}
+        <a href="{{ url_for('sprints_pages.progress_page') }}" class="nav-link{{ ' active' if request.endpoint == 'sprints_pages.progress_page' else '' }}" id="progress-link"{% if request.endpoint == 'sprints_pages.progress_page' %} aria-current="page"{% endif %}><i class="bi bi-bar-chart" aria-hidden="true"></i><span>Tiến độ</span></a>
+        {% if request.endpoint == 'project_pages.members_page' and request.view_args.get('workspace_id') and request.view_args.get('project_id') %}
+            {% set top_members_url = url_for('project_pages.members_page', workspace_id=request.view_args.workspace_id, project_id=request.view_args.project_id) %}
+        {% elif request.endpoint == 'workspace_pages.members_page' and request.view_args.get('workspace_id') %}
+            {% set top_members_url = url_for('workspace_pages.members_page', workspace_id=request.view_args.workspace_id) %}
         {% else %}
-            {% set top_members_url = url_for('main.member_directory') %}
+            {% set top_members_url = url_for('workspace_pages.directory_page') %}
         {% endif %}
-        <a href="{{ top_members_url }}" class="nav-link{{ ' active' if request.endpoint in ['main.member_directory', 'main.workspace_members_page', 'main.project_members_page'] else '' }}" id="workspace-members-link"{% if request.endpoint in ['main.member_directory', 'main.workspace_members_page', 'main.project_members_page'] %} aria-current="page"{% endif %}><i class="bi bi-people" aria-hidden="true"></i><span>Thành viên</span></a>
+        <a href="{{ top_members_url }}" class="nav-link{{ ' active' if request.endpoint in ['workspace_pages.directory_page', 'workspace_pages.members_page', 'project_pages.members_page'] else '' }}" id="workspace-members-link"{% if request.endpoint in ['workspace_pages.directory_page', 'workspace_pages.members_page', 'project_pages.members_page'] %} aria-current="page"{% endif %}><i class="bi bi-people" aria-hidden="true"></i><span>Thành viên</span></a>
         <a href="{{ url_for('tasks.index') }}" class="nav-link{{ ' active' if request.endpoint == 'tasks.index' else '' }}"{% if request.endpoint == 'tasks.index' %} aria-current="page"{% endif %}><i class="bi bi-folder2" aria-hidden="true"></i><span>Dự án</span></a>
     </nav>
     <div class="project-heading"><span>Dự án</span><span class="project-heading-actions"><button type="button" class="icon-button" id="project-picker-toggle" aria-label="Chọn dự án" aria-expanded="false" aria-controls="project-menu"><i class="bi bi-three-dots" aria-hidden="true"></i></button>{% if request.endpoint == 'tasks.index' %}<button type="button" aria-label="Tạo dự án" class="icon-button" id="project-create-button"><i class="bi bi-plus-lg" aria-hidden="true"></i></button>{% endif %}</span></div>
@@ -31,24 +31,25 @@
         <div class="project-menu" id="project-menu" hidden></div>
         <div class="project-children" id="project-children">
             <a class="tree-item{{ ' selected' if request.endpoint == 'tasks.index' else '' }}" id="task-link" href="{{ url_for('tasks.index') }}"{% if request.endpoint == 'tasks.index' %} aria-current="page"{% endif %}><i class="bi bi-list-task" aria-hidden="true"></i><span>Task</span></a>
-            <a class="tree-item{{ ' selected' if request.endpoint in ['main.workspace_members_page', 'main.project_members_page'] else '' }}" id="project-members-link" href="{% if request.endpoint == 'main.project_members_page' %}{{ url_for('main.project_members_page', workspace_id=request.view_args.workspace_id, project_id=request.view_args.project_id) }}{% elif request.endpoint == 'main.workspace_members_page' %}{{ url_for('main.workspace_members_page', workspace_id=request.view_args.workspace_id) }}{% else %}{{ url_for('main.member_directory') }}{% endif %}"{% if request.endpoint in ['main.workspace_members_page', 'main.project_members_page'] %} aria-current="page"{% endif %}><i class="bi bi-people" aria-hidden="true"></i><span>Thành viên</span></a>
-            <a class="tree-item{{ ' selected' if request.endpoint == 'main.sprints' else '' }}" id="sprint-link" href="{{ url_for('main.sprints') }}"{% if request.endpoint == 'main.sprints' %} aria-current="page"{% endif %}><i class="bi bi-lightning-charge" aria-hidden="true"></i><span>Sprint</span></a>
+            <a class="tree-item{{ ' selected' if request.endpoint in ['workspace_pages.members_page', 'project_pages.members_page'] else '' }}" id="project-members-link" href="{% if request.endpoint == 'project_pages.members_page' %}{{ url_for('project_pages.members_page', workspace_id=request.view_args.workspace_id, project_id=request.view_args.project_id) }}{% elif request.endpoint == 'workspace_pages.members_page' %}{{ url_for('workspace_pages.members_page', workspace_id=request.view_args.workspace_id) }}{% else %}{{ url_for('workspace_pages.directory_page') }}{% endif %}"{% if request.endpoint in ['workspace_pages.members_page', 'project_pages.members_page'] %} aria-current="page"{% endif %}><i class="bi bi-people" aria-hidden="true"></i><span>Thành viên</span></a>
+            <a class="tree-item{{ ' selected' if request.endpoint == 'sprints_pages.list_page' else '' }}" id="sprint-link" href="{{ url_for('sprints_pages.list_page') }}"{% if request.endpoint == 'sprints_pages.list_page' %} aria-current="page"{% endif %}><i class="bi bi-lightning-charge" aria-hidden="true"></i><span>Sprint</span></a>
         </div>
     </div>
     {% if g.user %}
         {% set account_name = g.user['display_name'] or g.user['username'] %}
         <div class="profile-menu-wrap">
             <div class="profile-menu" id="profile-menu" hidden>
-                <a href="{{ url_for('main.user_settings') }}"><i class="bi bi-gear" aria-hidden="true"></i><span>Cài đặt</span></a>
+                <a href="{{ url_for('account_pages.settings') }}"><i class="bi bi-gear" aria-hidden="true"></i><span>Cài đặt</span></a>
                 <button type="button" id="profile-logout"><i class="bi bi-box-arrow-right" aria-hidden="true"></i><span>Đăng xuất</span></button>
                 <p class="profile-menu-error" id="profile-menu-error" role="status" hidden></p>
             </div>
             <button class="profile-button" type="button" id="profile-button" aria-label="Mở menu tài khoản" aria-expanded="false" aria-controls="profile-menu"><span class="profile-avatar" id="profile-avatar">{{ account_name[:2]|upper }}</span><span class="profile-copy"><strong id="profile-name">{{ account_name }}</strong><small id="profile-email">{{ g.user['email'] or g.user['username'] }}</small></span><i class="bi bi-chevron-down" aria-hidden="true"></i></button>
         </div>
     {% else %}
-        <a class="profile-button" href="{{ url_for('main.login') }}" aria-label="Đăng nhập tài khoản"><span class="profile-avatar" id="profile-avatar">?</span><span class="profile-copy"><strong id="profile-name">Chưa đăng nhập</strong><small id="profile-email">Đăng nhập để sử dụng</small></span><i class="bi bi-chevron-down" aria-hidden="true"></i></a>
+        <a class="profile-button" href="{{ url_for('auth_pages.login') }}" aria-label="Đăng nhập tài khoản"><span class="profile-avatar" id="profile-avatar">?</span><span class="profile-copy"><strong id="profile-name">Chưa đăng nhập</strong><small id="profile-email">Đăng nhập để sử dụng</small></span><i class="bi bi-chevron-down" aria-hidden="true"></i></a>
     {% endif %}
 </aside>
+<script src="{{ url_for('static', filename='js/utils.js', v=1) }}" defer></script>
 <script src="{{ url_for('static', filename='js/sidebar-projects.js', v=1) }}" defer></script>
 <script src="{{ url_for('static', filename='js/theme-sync.js', v=1) }}" defer></script>
 <script src="{{ url_for('static', filename='js/app-notices.js', v=1) }}" defer></script>

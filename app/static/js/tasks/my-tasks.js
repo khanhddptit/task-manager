@@ -1,5 +1,6 @@
 (() => {
     const groupsRoot = document.querySelector("#my-task-groups");
+    const { formatLocalDate, getInitials } = window.KairoUtils;
     const emptyState = document.querySelector("#my-task-empty");
     const searchInput = document.querySelector("#task-search");
     const statusFilter = document.querySelector("#status-filter");
@@ -10,10 +11,6 @@
 
     const statusLabels = { todo: "Cần làm", in_progress: "Đang làm", review: "Đang review", done: "Hoàn thành" };
     const priorityLabels = { high: "Cao", medium: "Trung bình", low: "Thấp" };
-
-    function initials(value) {
-        return String(value || "K").trim().split(/\s+/).slice(0, 2).map((part) => part[0]).join("").toUpperCase();
-    }
 
     function setTheme(light) {
         document.body.classList.toggle("theme-light", light);
@@ -119,12 +116,6 @@
             : a.order - b.order);
     }
 
-    function formattedDate(value) {
-        if (!value) return "Chưa đặt";
-        const [year, month, day] = value.split("-").map(Number);
-        return new Intl.DateTimeFormat("vi-VN", { day: "numeric", month: "short", year: "numeric" }).format(new Date(year, month - 1, day));
-    }
-
     function appendCell(row, content, className = "") {
         const cell = document.createElement("td");
         if (className) cell.className = className;
@@ -166,7 +157,7 @@
 
         const due = document.createElement("span");
         due.className = `task-due${task.due_date && task.due_date < localToday() && task.status !== "done" ? " overdue" : ""}`;
-        due.textContent = formattedDate(task.due_date);
+        due.textContent = formatLocalDate(task.due_date);
         appendCell(row, due);
 
         const assignee = document.createElement("div");
@@ -177,7 +168,7 @@
             avatar.src = task.assignee.avatar_url;
             avatar.alt = "";
         } else {
-            avatar.textContent = initials(task.assignee.display_name || task.assignee.username);
+            avatar.textContent = getInitials(task.assignee.display_name || task.assignee.username, { fallback: "K" });
         }
         const assigneeName = document.createElement("span");
         assigneeName.className = "task-assignee-name";
@@ -293,7 +284,7 @@
             image.alt = "";
             avatar.replaceChildren(image);
         } else {
-            avatar.textContent = initials(name);
+            avatar.textContent = getInitials(name, { fallback: "K" });
         }
     }
 

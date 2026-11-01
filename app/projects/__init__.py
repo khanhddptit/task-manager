@@ -7,3 +7,4 @@ bp = Blueprint(
 )
 
 from app.projects import routes
+from app.projects.pages import page_bp

@@ -16,13 +16,13 @@
     <link rel="stylesheet" href="{{ url_for('static', filename='css/notifications.css', v=2) }}">
 </head>
 <body class="members-page kanban-page" data-scope="{{ scope }}" data-workspace-id="{{ workspace_id }}" data-project-id="{{ project_id }}" data-members-url="{{ members_url }}" data-invitations-url="{{ invitations_url }}" data-invitation-url="{{ invitation_collection_url }}">
-    {% include 'partials/app-sidebar.html' %}
+    {% include 'partials/layout/app-sidebar.html' %}
     <div class="app-shell">
     <header class="members-topbar">
         <div class="topbar-tools">
             <span class="back-link" id="resource-topbar-name">{{ scope_name }} · Thành viên</span>
             <button class="theme-toggle" type="button" aria-label="Chuyển giao diện"><i class="bi bi-moon" aria-hidden="true"></i></button>
-            {% include 'partials/notifications.html' %}
+            {% include 'partials/notifications/panel.html' %}
         </div>
     </header>
     <main class="members-main" data-workspace-id="{{ workspace_id }}" data-project-id="{{ project_id }}" data-resource-url="{% if scope == 'workspace' %}{{ url_for('workspaces.show', workspace_id=workspace_id) }}{% else %}{{ url_for('projects.detail', workspace_id=workspace_id, project_id=project_id) }}{% endif %}">
@@ -73,7 +73,9 @@
             <section class="share-box" id="share-box" hidden><p id="email-status"></p><label for="invite-link">Liên kết mời một lần</label><div class="share-link-row"><input id="invite-link" type="text" readonly><button type="button" id="copy-invite" class="secondary-button"><i class="bi bi-copy" aria-hidden="true"></i> Sao chép</button></div><small>Không chia sẻ liên kết này với người khác. Liên kết hết hạn theo thời gian hiển thị.</small></section>
         </form>
     </dialog>
-    <script src="{{ url_for('static', filename='js/members.js', v=7) }}" defer></script>
+    <!-- Shared helpers must load before this page's member-management code. -->
+    <script src="{{ url_for('static', filename='js/members/shared.js', v=1) }}" defer></script>
+    <script src="{{ url_for('static', filename='js/members/manage.js', v=1) }}" defer></script>
     <script src="{{ url_for('static', filename='js/notifications.js', v=7) }}" defer></script>
 </body>
 </html>
