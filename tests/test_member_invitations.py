@@ -414,7 +414,9 @@ def test_invitation_email_uses_configured_smtp_and_public_url(
     assert invitation["invite_url"].startswith("https://kairo.example/invite/accept?")
     assert len(sent_messages) == 1
     assert sent_messages[0]["To"] == "new@example.com"
-    assert invitation_token(issued) in sent_messages[0].get_content()
+    plain_text = sent_messages[0].get_body(preferencelist=("plain",))
+    assert plain_text is not None
+    assert invitation_token(issued) in plain_text.get_content()
 
 
 def test_non_admin_cannot_resend_invitation(app, member_world, monkeypatch):
