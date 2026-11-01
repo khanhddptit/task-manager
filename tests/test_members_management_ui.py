@@ -28,7 +28,7 @@ def test_members_directory_exposes_workspace_creation_and_role_controls(
     csrf_token = login(client)
     directory = client.get("/members").get_data(as_text=True)
     assert 'id="create-workspace"' in directory
-    assert "members.js?v=4" in directory
+    assert "members/directory.js?v=1" in directory
 
     update = client.patch(
         f"/workspaces/{workspace['id']}",

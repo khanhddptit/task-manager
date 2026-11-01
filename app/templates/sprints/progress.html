@@ -11,9 +11,9 @@
     <link rel="stylesheet" href="{{ url_for('static', filename='css/kanban.css', v=21) }}"><link rel="stylesheet" href="{{ url_for('static', filename='css/sprints.css', v=2) }}"><link rel="stylesheet" href="{{ url_for('static', filename='css/notifications.css', v=2) }}">
 </head>
 <body class="kanban-page sprint-page" data-page="progress">
-    {% include 'partials/app-sidebar.html' %}
-    <div class="app-shell"><header class="topbar"><div class="breadcrumbs"><span class="breadcrumb-dot"></span><span id="breadcrumb-project">Project</span><i class="bi bi-chevron-right" aria-hidden="true"></i><span class="breadcrumb-current">Tiến độ Sprint</span></div><div class="topbar-actions"><button type="button" class="topbar-icon" id="theme-toggle" aria-label="Đổi giao diện"><i class="bi bi-moon" aria-hidden="true"></i></button>{% include 'partials/notifications.html' %}</div></header>
-        <main class="sprint-main progress-main"><section class="sprint-heading"><div><p class="project-overline">PROJECT / ANALYTICS</p><h1>Tiến độ Sprint</h1><p class="sprint-subtitle">Theo dõi trạng thái công việc và biểu đồ burndown theo thời gian.</p></div><a class="secondary-button sprint-back-link" id="back-to-sprints" href="{{ url_for('main.sprints') }}"><i class="bi bi-arrow-left" aria-hidden="true"></i> Danh sách Sprint</a></section>
+    {% include 'partials/layout/app-sidebar.html' %}
+    <div class="app-shell"><header class="topbar"><div class="breadcrumbs"><span class="breadcrumb-dot"></span><span id="breadcrumb-project">Project</span><i class="bi bi-chevron-right" aria-hidden="true"></i><span class="breadcrumb-current">Tiến độ Sprint</span></div><div class="topbar-actions"><button type="button" class="topbar-icon" id="theme-toggle" aria-label="Đổi giao diện"><i class="bi bi-moon" aria-hidden="true"></i></button>{% include 'partials/notifications/panel.html' %}</div></header>
+        <main class="sprint-main progress-main"><section class="sprint-heading"><div><p class="project-overline">PROJECT / ANALYTICS</p><h1>Tiến độ Sprint</h1><p class="sprint-subtitle">Theo dõi trạng thái công việc và biểu đồ burndown theo thời gian.</p></div><a class="secondary-button sprint-back-link" id="back-to-sprints" href="{{ url_for('sprints_pages.list_page') }}"><i class="bi bi-arrow-left" aria-hidden="true"></i> Danh sách Sprint</a></section>
             <div class="sprint-toolbar"><label for="project-select"><i class="bi bi-folder2" aria-hidden="true"></i><span>Dự án</span><select id="project-select" aria-label="Chọn dự án"></select></label><label for="sprint-select"><i class="bi bi-lightning-charge" aria-hidden="true"></i><span>Sprint</span><select id="sprint-select" aria-label="Chọn Sprint"><option value="">Chọn Sprint</option></select></label></div>
             <div class="sprint-notice" id="sprint-notice" role="status" hidden></div>
             <section id="progress-content" hidden>
@@ -24,6 +24,6 @@
             </section>
             <div class="sprint-empty" id="progress-empty"><span><i class="bi bi-bar-chart-line" aria-hidden="true"></i></span><h2>Chọn Sprint để xem tiến độ</h2><p>Biểu đồ và thống kê sẽ xuất hiện khi bạn chọn một Sprint của dự án.</p></div>
         </main>
-    </div><div class="toast-message" id="toast-message" role="status" aria-live="polite"></div><script src="{{ url_for('static', filename='js/sprints.js', v=5) }}" defer></script><script src="{{ url_for('static', filename='js/notifications.js', v=7) }}" defer></script>
+    </div><div class="toast-message" id="toast-message" role="status" aria-live="polite"></div><script type="module" src="{{ url_for('static', filename='js/sprints/page.js', v=1) }}"></script><script src="{{ url_for('static', filename='js/notifications.js', v=7) }}" defer></script>
 </body>
 </html>

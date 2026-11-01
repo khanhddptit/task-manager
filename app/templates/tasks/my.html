@@ -14,9 +14,9 @@
 </head>
 <body class="kanban-page my-tasks-page" data-page="my-tasks">
     <a class="skip-link" href="#my-tasks-main">Đến nội dung chính</a>
-    {% include 'partials/app-sidebar.html' %}
+    {% include 'partials/layout/app-sidebar.html' %}
     <div class="app-shell">
-        <header class="topbar"><div class="breadcrumbs"><span class="breadcrumb-dot"></span><span>Kairo</span><i class="bi bi-chevron-right" aria-hidden="true"></i><span class="breadcrumb-current">Việc của tôi</span></div><div class="topbar-actions"><button type="button" class="topbar-icon" id="theme-toggle" aria-label="Đổi giao diện"><i class="bi bi-moon" aria-hidden="true"></i></button>{% include 'partials/notifications.html' %}</div></header>
+        <header class="topbar"><div class="breadcrumbs"><span class="breadcrumb-dot"></span><span>Kairo</span><i class="bi bi-chevron-right" aria-hidden="true"></i><span class="breadcrumb-current">Việc của tôi</span></div><div class="topbar-actions"><button type="button" class="topbar-icon" id="theme-toggle" aria-label="Đổi giao diện"><i class="bi bi-moon" aria-hidden="true"></i></button>{% include 'partials/notifications/panel.html' %}</div></header>
         <main class="my-tasks-main" id="my-tasks-main">
             <section class="my-tasks-heading"><div><p class="project-overline">PERSONAL OVERVIEW</p><h1>Việc của tôi</h1><p class="my-tasks-subtitle">Tổng hợp các task được giao cho bạn trên tất cả dự án bạn có quyền truy cập.</p></div><div class="my-task-summary" aria-live="polite"><strong id="visible-count">—</strong><span>task</span></div></section>
             <section class="my-tasks-toolbar" aria-label="Bộ lọc task">
@@ -35,7 +35,7 @@
         </main>
     </div>
     <div class="toast-message" id="toast-message" role="status" aria-live="polite"></div>
-    <script src="{{ url_for('static', filename='js/my-tasks.js', v=3) }}" defer></script>
+    <script src="{{ url_for('static', filename='js/tasks/my-tasks.js', v=1) }}" defer></script>
     <script src="{{ url_for('static', filename='js/notifications.js', v=7) }}" defer></script>
 </body>
 </html>

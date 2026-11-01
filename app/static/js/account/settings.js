@@ -5,6 +5,7 @@ const avatarImage = document.querySelector("#avatar-image");
 const avatarInitials = document.querySelector("#avatar-initials");
 const MAX_AVATAR_BYTES = 2 * 1024 * 1024;
 const ALLOWED_AVATAR_TYPES = new Set(["image/jpeg", "image/png", "image/webp"]);
+const { getInitials } = window.KairoUtils;
 
 function applySettingsTheme(theme) {
     const dark = theme === "dark";
@@ -53,7 +54,7 @@ async function readResponse(response) {
 
 function updateAvatar(user) {
     const name = user.display_name || user.username || "Kairo";
-    avatarInitials.textContent = name.trim().split(/\s+/).slice(0, 2).map((part) => part[0]).join("").toUpperCase();
+    avatarInitials.textContent = getInitials(name, { fallback: "K" });
     if (user.avatar_url) {
         avatarImage.src = `${user.avatar_url}?v=${Date.now()}`;
         avatarImage.hidden = false;

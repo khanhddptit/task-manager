@@ -38,16 +38,19 @@ def create_app(test_config=None):
 
     from app import db
     from authlib.integrations.flask_client import OAuth
-    from app.auth import bp as auth_bp
+    from app.auth import bp as auth_bp, page_bp as auth_page_bp
+    from app.account import page_bp as account_page_bp
     from app.comments import bp as comments_bp
     from app.main import bp as main_bp
     from app.notifications import bp as notifications_bp
-    from app.projects import bp as projects_bp
+    from app.projects import bp as projects_bp, page_bp as project_page_bp
+    from app.sprints import page_bp as sprints_page_bp
     from app.tasks import bp as tasks_bp, page_bp as tasks_page_bp
-    from app.workspaces import bp as workspaces_bp
+    from app.workspaces import bp as workspaces_bp, page_bp as workspace_page_bp
 
     db.init_app(app)
     app.register_blueprint(auth_bp)
+    app.register_blueprint(auth_page_bp)
     CSRFProtect(app)
     google_oauth = OAuth(app)
     google_oauth_enabled = bool(
@@ -67,6 +70,10 @@ def create_app(test_config=None):
     app.extensions["google_oauth"] = google_oauth
     app.extensions["google_oauth_enabled"] = google_oauth_enabled
     app.register_blueprint(main_bp)
+    app.register_blueprint(account_page_bp)
+    app.register_blueprint(sprints_page_bp)
+    app.register_blueprint(workspace_page_bp)
+    app.register_blueprint(project_page_bp)
     app.register_blueprint(notifications_bp)
     app.register_blueprint(projects_bp)
     app.register_blueprint(tasks_bp)
