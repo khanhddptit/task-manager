@@ -16,20 +16,120 @@
 <body class="kanban-page sprint-page" data-page="sprints">
     {% include 'partials/layout/app-sidebar.html' %}
     <div class="app-shell">
-        <header class="topbar"><div class="breadcrumbs"><span class="breadcrumb-dot"></span><span id="breadcrumb-project">Project</span><i class="bi bi-chevron-right" aria-hidden="true"></i><span class="breadcrumb-current">Sprint</span></div><div class="topbar-actions"><button type="button" class="topbar-icon" id="theme-toggle" aria-label="Đổi giao diện"><i class="bi bi-moon" aria-hidden="true"></i></button>{% include 'partials/notifications/panel.html' %}</div></header>
+        <header class="topbar">
+            <div class="breadcrumbs">
+                <span class="breadcrumb-dot"></span>
+                <span id="breadcrumb-project">Project</span>
+                <i class="bi bi-chevron-right" aria-hidden="true"></i>
+                <span class="breadcrumb-current">Sprint</span>
+            </div>
+            <div class="topbar-actions">
+                <button type="button" class="topbar-icon" id="theme-toggle" aria-label="Đổi giao diện">
+                    <i class="bi bi-moon" aria-hidden="true"></i>
+                </button>
+                {% include 'partials/notifications/panel.html' %}
+            </div>
+        </header>
         <main class="sprint-main" id="sprint-list">
-            <section class="sprint-heading"><div><p class="project-overline">PROJECT / DELIVERY</p><h1>Sprint</h1><p class="sprint-subtitle">Lập kế hoạch, theo dõi tiến độ và xem các mốc hoàn thành của dự án.</p></div><button class="primary-button" id="create-sprint" type="button"><i class="bi bi-plus-lg" aria-hidden="true"></i> Tạo Sprint</button></section>
-            <div class="sprint-toolbar"><label for="project-select"><i class="bi bi-folder2" aria-hidden="true"></i><span>Dự án</span><select id="project-select" aria-label="Chọn dự án"></select></label><span class="sprint-toolbar-note" id="sprint-count">Đang tải Sprint…</span></div>
+            <section class="sprint-heading">
+                <div>
+                    <p class="project-overline">PROJECT / DELIVERY</p>
+                    <h1>Sprint</h1>
+                    <p class="sprint-subtitle">
+                        Lập kế hoạch, theo dõi tiến độ và xem các mốc hoàn thành của dự án.
+                    </p>
+                </div>
+                <button class="primary-button" id="create-sprint" type="button">
+                    <i class="bi bi-plus-lg" aria-hidden="true"></i>
+                    Tạo Sprint
+                </button>
+            </section>
+            <div class="sprint-toolbar">
+                <label for="project-select">
+                    <i class="bi bi-folder2" aria-hidden="true"></i>
+                    <span>Dự án</span>
+                    <select id="project-select" aria-label="Chọn dự án"></select>
+                </label>
+                <span class="sprint-toolbar-note" id="sprint-count">Đang tải Sprint…</span>
+            </div>
             <div class="sprint-notice" id="sprint-notice" role="status" hidden></div>
             <section class="sprint-groups" aria-live="polite">
-                <div class="sprint-group"><div class="sprint-group-heading"><span class="sprint-state-dot active-dot"></span><h2>Đang diễn ra</h2><span class="sprint-group-count" id="active-count">0</span></div><div class="sprint-card-grid" id="active-sprints"></div></div>
-                <div class="sprint-group"><div class="sprint-group-heading"><span class="sprint-state-dot planned-dot"></span><h2>Đã lên kế hoạch</h2><span class="sprint-group-count" id="planned-count">0</span></div><div class="sprint-card-grid" id="planned-sprints"></div></div>
-                <div class="sprint-group"><div class="sprint-group-heading"><span class="sprint-state-dot completed-dot"></span><h2>Đã hoàn thành</h2><span class="sprint-group-count" id="completed-count">0</span></div><div class="sprint-card-grid" id="completed-sprints"></div></div>
+                <div class="sprint-group">
+                    <div class="sprint-group-heading">
+                        <span class="sprint-state-dot active-dot"></span>
+                        <h2>Đang diễn ra</h2>
+                        <span class="sprint-group-count" id="active-count">0</span>
+                    </div>
+                    <div class="sprint-card-grid" id="active-sprints"></div>
+                </div>
+                <div class="sprint-group">
+                    <div class="sprint-group-heading">
+                        <span class="sprint-state-dot planned-dot"></span>
+                        <h2>Đã lên kế hoạch</h2>
+                        <span class="sprint-group-count" id="planned-count">0</span>
+                    </div>
+                    <div class="sprint-card-grid" id="planned-sprints"></div>
+                </div>
+                <div class="sprint-group">
+                    <div class="sprint-group-heading">
+                        <span class="sprint-state-dot completed-dot"></span>
+                        <h2>Đã hoàn thành</h2>
+                        <span class="sprint-group-count" id="completed-count">0</span>
+                    </div>
+                    <div class="sprint-card-grid" id="completed-sprints"></div>
+                </div>
             </section>
-            <div class="sprint-empty" id="sprint-empty" hidden><span><i class="bi bi-lightning-charge" aria-hidden="true"></i></span><h2>Chưa có Sprint nào</h2><p>Tạo Sprint đầu tiên để bắt đầu chia nhỏ và theo dõi tiến độ công việc.</p><button class="primary-button" type="button" data-empty-create>Tạo Sprint</button></div>
+            <div class="sprint-empty" id="sprint-empty" hidden>
+                <span>
+                    <i class="bi bi-lightning-charge" aria-hidden="true"></i>
+                </span>
+                <h2>Chưa có Sprint nào</h2>
+                <p>Tạo Sprint đầu tiên để bắt đầu chia nhỏ và theo dõi tiến độ công việc.</p>
+                <button class="primary-button" type="button" data-empty-create>
+                    Tạo Sprint
+                </button>
+            </div>
         </main>
     </div>
-    <dialog class="sprint-dialog" id="sprint-dialog"><form id="sprint-form" method="dialog"><div class="dialog-heading"><div><p>SPRINT PLAN</p><h2 id="sprint-dialog-title">Tạo Sprint</h2></div><button type="button" class="dialog-close" data-close-dialog aria-label="Đóng"><i class="bi bi-x-lg" aria-hidden="true"></i></button></div><label class="dialog-field">Tên Sprint<input name="name" maxlength="80" required placeholder="Ví dụ: Sprint 01"></label><div class="dialog-grid"><label class="dialog-field">Ngày bắt đầu<input name="start_date" type="date" required></label><label class="dialog-field">Ngày kết thúc<input name="end_date" type="date" required></label></div><label class="dialog-field">Ghi chú<textarea name="goal" rows="3" maxlength="2000" placeholder="Ghi chú cho Sprint"></textarea></label><p class="sprint-form-error" id="sprint-form-error" role="alert" hidden></p><div class="dialog-actions"><span class="dialog-actions-spacer"></span><button type="button" class="secondary-button" data-close-dialog>Hủy</button><button type="submit" class="primary-button" id="sprint-submit">Tạo Sprint</button></div></form></dialog>
+    <dialog class="sprint-dialog" id="sprint-dialog">
+        <form id="sprint-form" method="dialog">
+            <div class="dialog-heading">
+                <div>
+                    <p>SPRINT PLAN</p>
+                    <h2 id="sprint-dialog-title">Tạo Sprint</h2>
+                </div>
+                <button type="button" class="dialog-close" data-close-dialog aria-label="Đóng">
+                    <i class="bi bi-x-lg" aria-hidden="true"></i>
+                </button>
+            </div>
+            <label class="dialog-field">
+                Tên Sprint
+                <input name="name" maxlength="80" required placeholder="Ví dụ: Sprint 01">
+            </label>
+            <div class="dialog-grid">
+                <label class="dialog-field">
+                    Ngày bắt đầu
+                    <input name="start_date" type="date" required>
+                </label>
+                <label class="dialog-field">
+                    Ngày kết thúc
+                    <input name="end_date" type="date" required>
+                </label>
+            </div>
+            <label class="dialog-field">
+                Ghi chú
+                <textarea name="goal" rows="3" maxlength="2000" placeholder="Ghi chú cho Sprint"></textarea>
+            </label>
+            <p class="sprint-form-error" id="sprint-form-error" role="alert" hidden></p>
+            <div class="dialog-actions">
+                <span class="dialog-actions-spacer"></span>
+                <button type="button" class="secondary-button" data-close-dialog>Hủy</button>
+                <button type="submit" class="primary-button" id="sprint-submit">
+                    Tạo Sprint
+                </button>
+            </div>
+        </form>
+    </dialog>
     <div class="toast-message" id="toast-message" role="status" aria-live="polite"></div>
     <script type="module" src="{{ url_for('static', filename='js/sprints/page.js', v=1) }}"></script>
     <script src="{{ url_for('static', filename='js/notifications.js', v=7) }}" defer></script>

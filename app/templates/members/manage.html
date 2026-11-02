@@ -20,57 +20,164 @@
     <div class="app-shell">
     <header class="members-topbar">
         <div class="topbar-tools">
-            <span class="back-link" id="resource-topbar-name">{{ scope_name }} · Thành viên</span>
-            <button class="theme-toggle" type="button" aria-label="Chuyển giao diện"><i class="bi bi-moon" aria-hidden="true"></i></button>
+            <span class="back-link" id="resource-topbar-name">
+                {{ scope_name }}
+                · Thành viên
+            </span>
+            <button class="theme-toggle" type="button" aria-label="Chuyển giao diện">
+                <i class="bi bi-moon" aria-hidden="true"></i>
+            </button>
             {% include 'partials/notifications/panel.html' %}
         </div>
     </header>
     <main class="members-main" data-workspace-id="{{ workspace_id }}" data-project-id="{{ project_id }}" data-resource-url="{% if scope == 'workspace' %}{{ url_for('workspaces.show', workspace_id=workspace_id) }}{% else %}{{ url_for('projects.detail', workspace_id=workspace_id, project_id=project_id) }}{% endif %}">
-        <nav class="breadcrumbs" aria-label="Đường dẫn"><a href="{{ url_for('main.index') }}">Kairo</a><i class="bi bi-chevron-right" aria-hidden="true"></i><span id="resource-breadcrumb-name">{{ scope_name }}</span><i class="bi bi-chevron-right" aria-hidden="true"></i><span class="current">Thành viên</span></nav>
+        <nav class="breadcrumbs" aria-label="Đường dẫn">
+            <a href="{{ url_for('main.index') }}">Kairo</a>
+            <i class="bi bi-chevron-right" aria-hidden="true"></i>
+            <span id="resource-breadcrumb-name">{{ scope_name }}</span>
+            <i class="bi bi-chevron-right" aria-hidden="true"></i>
+            <span class="current">Thành viên</span>
+        </nav>
         <section class="page-heading">
-            <div><p class="eyebrow">QUẢN LÝ {{ scope_name|upper }}</p><h1>Thành viên</h1><p class="subtitle">Quản lý những người có quyền truy cập vào {{ scope_name|lower }} này.</p></div>
+            <div>
+                <p class="eyebrow">QUẢN LÝ {{ scope_name|upper }}</p>
+                <h1>Thành viên</h1>
+                <p class="subtitle">
+                    Quản lý những người có quyền truy cập vào {{ scope_name|lower }} này.
+                </p>
+            </div>
             <div class="heading-actions">
-                <button id="leave-workspace" class="secondary-button danger-button" type="button" hidden>Rời Workspace</button>
+                <button id="leave-workspace" class="secondary-button danger-button" type="button" hidden>
+                    Rời Workspace
+                </button>
                 <div id="resource-actions" class="resource-actions" hidden>
-                    <button id="edit-resource" class="secondary-button" type="button"><i class="bi bi-pencil" aria-hidden="true"></i> Sửa {{ scope_name }}</button>
-                    <button id="delete-resource" class="secondary-button danger-button" type="button"><i class="bi bi-trash" aria-hidden="true"></i> Xóa {{ scope_name }}</button>
+                    <button id="edit-resource" class="secondary-button" type="button">
+                        <i class="bi bi-pencil" aria-hidden="true"></i>
+                        Sửa {{ scope_name }}
+                    </button>
+                    <button id="delete-resource" class="secondary-button danger-button" type="button">
+                        <i class="bi bi-trash" aria-hidden="true"></i>
+                        Xóa {{ scope_name }}
+                    </button>
                 </div>
-                <button id="add-member" class="primary-button" type="button" hidden><i class="bi bi-person-plus" aria-hidden="true"></i> Thêm thành viên</button>
+                <button id="add-member" class="primary-button" type="button" hidden>
+                    <i class="bi bi-person-plus" aria-hidden="true"></i>
+                    Thêm thành viên
+                </button>
             </div>
         </section>
 
         <section class="members-card" aria-labelledby="members-title">
-            <div class="card-heading"><div><h2 id="members-title">Danh sách thành viên</h2><p id="member-count">Đang tải thành viên…</p></div><span class="scope-chip"><i class="bi bi-people" aria-hidden="true"></i> {{ scope_name }}</span></div>
-            <div class="table-wrap"><table><thead><tr><th scope="col">Thành viên</th><th scope="col">Email</th><th scope="col">Vai trò</th><th scope="col" class="actions-heading">Thao tác</th></tr></thead><tbody id="member-rows"><tr><td colspan="4" class="loading-cell">Đang tải danh sách…</td></tr></tbody></table></div>
+            <div class="card-heading">
+                <div>
+                    <h2 id="members-title">Danh sách thành viên</h2>
+                    <p id="member-count">Đang tải thành viên…</p>
+                </div>
+                <span class="scope-chip">
+                    <i class="bi bi-people" aria-hidden="true"></i>
+                    {{ scope_name }}
+                </span>
+            </div>
+            <div class="table-wrap">
+                <table>
+                    <thead>
+                        <tr>
+                            <th scope="col">Thành viên</th>
+                            <th scope="col">Email</th>
+                            <th scope="col">Vai trò</th>
+                            <th scope="col" class="actions-heading">Thao tác</th>
+                        </tr>
+                    </thead>
+                    <tbody id="member-rows">
+                        <tr>
+                            <td colspan="4" class="loading-cell">Đang tải danh sách…</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
             <p class="notice" id="page-notice" role="status" aria-live="polite" hidden></p>
         </section>
 
         <section class="members-card invitations-card" id="pending-card" hidden aria-labelledby="pending-title">
-            <div class="card-heading"><div><h2 id="pending-title">Lời mời đang chờ</h2><p>Các lời mời có thể được thu hồi trước khi chấp nhận.</p></div></div>
-            <div class="table-wrap"><table><thead><tr><th scope="col">Email</th><th scope="col">Vai trò</th><th scope="col">Hết hạn</th><th scope="col" class="actions-heading">Thao tác</th></tr></thead><tbody id="invitation-rows"></tbody></table></div>
+            <div class="card-heading">
+                <div>
+                    <h2 id="pending-title">Lời mời đang chờ</h2>
+                    <p>Các lời mời có thể được thu hồi trước khi chấp nhận.</p>
+                </div>
+            </div>
+            <div class="table-wrap">
+                <table>
+                    <thead>
+                        <tr>
+                            <th scope="col">Email</th>
+                            <th scope="col">Vai trò</th>
+                            <th scope="col">Hết hạn</th>
+                            <th scope="col" class="actions-heading">Thao tác</th>
+                        </tr>
+                    </thead>
+                    <tbody id="invitation-rows"></tbody>
+                </table>
+            </div>
         </section>
     </main>
     </div>
 
     <dialog id="resource-dialog" class="invite-dialog">
         <form id="resource-form" class="dialog-form">
-            <button class="dialog-close" type="button" data-close-resource-dialog aria-label="Đóng"><i class="bi bi-x-lg" aria-hidden="true"></i></button>
-            <p class="eyebrow">QUẢN LÝ {{ scope_name|upper }}</p><h2>Sửa {{ scope_name }}</h2><p class="dialog-copy">Cập nhật tên và mô tả {{ scope_name|lower }}.</p>
-            <label for="resource-name">Tên {{ scope_name }}</label><input id="resource-name" name="name" type="text" required autocomplete="off">
-            <label for="resource-description" class="field-label-spaced">Mô tả <span>(không bắt buộc)</span></label><textarea id="resource-description" name="description" rows="3"></textarea>
+            <button class="dialog-close" type="button" data-close-resource-dialog aria-label="Đóng">
+                <i class="bi bi-x-lg" aria-hidden="true"></i>
+            </button>
+            <p class="eyebrow">QUẢN LÝ {{ scope_name|upper }}</p>
+            <h2>Sửa {{ scope_name }}</h2>
+            <p class="dialog-copy">Cập nhật tên và mô tả {{ scope_name|lower }}.</p>
+            <label for="resource-name">Tên {{ scope_name }}</label>
+            <input id="resource-name" name="name" type="text" required autocomplete="off">
+            <label for="resource-description" class="field-label-spaced">
+                Mô tả
+                <span>(không bắt buộc)</span>
+            </label>
+            <textarea id="resource-description" name="description" rows="3"></textarea>
             <p class="form-error" id="resource-error" role="alert" hidden></p>
-            <button class="primary-button dialog-submit" type="submit">Lưu thay đổi</button>
+            <button class="primary-button dialog-submit" type="submit">
+                Lưu thay đổi
+            </button>
         </form>
     </dialog>
     <dialog id="invite-dialog" class="invite-dialog">
         <form id="invite-form" class="dialog-form">
-            {% if scope == 'project' %}<label for="workspace-member-select">Thành viên Workspace</label><select id="workspace-member-select"><option value="">Chọn thành viên có sẵn</option></select><p class="dialog-copy">Hoặc nhập email để mời người chưa thuộc Workspace.</p>{% endif %}
-            <button class="dialog-close" type="button" data-close-dialog aria-label="Đóng"><i class="bi bi-x-lg" aria-hidden="true"></i></button>
-            <p class="eyebrow">LỜI MỜI {{ scope_name|upper }}</p><h2>Thêm thành viên</h2><p class="dialog-copy">Người được mời sẽ tham gia với vai trò Member. Họ cần đăng nhập bằng đúng email này để chấp nhận.</p>
-            <label for="invite-email">Email</label><input id="invite-email" name="email" type="email" autocomplete="email" maxlength="254" placeholder="name@example.com" required>
+            {% if scope == 'project' %}
+            <label for="workspace-member-select">Thành viên Workspace</label>
+            <select id="workspace-member-select">
+                <option value="">Chọn thành viên có sẵn</option>
+            </select>
+            <p class="dialog-copy">Hoặc nhập email để mời người chưa thuộc Workspace.</p>
+            {% endif %}
+            <button class="dialog-close" type="button" data-close-dialog aria-label="Đóng">
+                <i class="bi bi-x-lg" aria-hidden="true"></i>
+            </button>
+            <p class="eyebrow">LỜI MỜI {{ scope_name|upper }}</p>
+            <h2>Thêm thành viên</h2>
+            <p class="dialog-copy">
+                Người được mời sẽ tham gia với vai trò Member. Họ cần đăng nhập bằng đúng email này để chấp nhận.
+            </p>
+            <label for="invite-email">Email</label>
+            <input id="invite-email" name="email" type="email" autocomplete="email" maxlength="254" placeholder="name@example.com" required>
             <p class="form-error" id="invite-error" role="alert" hidden></p>
             <button class="primary-button dialog-submit" type="submit">Gửi lời mời</button>
-            <section class="share-box" id="share-box" hidden><p id="email-status"></p><label for="invite-link">Liên kết mời một lần</label><div class="share-link-row"><input id="invite-link" type="text" readonly><button type="button" id="copy-invite" class="secondary-button"><i class="bi bi-copy" aria-hidden="true"></i> Sao chép</button></div><small>Không chia sẻ liên kết này với người khác. Liên kết hết hạn theo thời gian hiển thị.</small></section>
+            <section class="share-box" id="share-box" hidden>
+                <p id="email-status"></p>
+                <label for="invite-link">Liên kết mời một lần</label>
+                <div class="share-link-row">
+                    <input id="invite-link" type="text" readonly>
+                    <button type="button" id="copy-invite" class="secondary-button">
+                        <i class="bi bi-copy" aria-hidden="true"></i>
+                        Sao chép
+                    </button>
+                </div>
+                <small>
+                    Không chia sẻ liên kết này với người khác. Liên kết hết hạn theo thời gian hiển thị.
+                </small>
+            </section>
         </form>
     </dialog>
     <!-- Shared helpers must load before this page's member-management code. -->

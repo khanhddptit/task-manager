@@ -13,15 +13,43 @@
     <link rel="stylesheet" href="{{ url_for('static', filename='css/members.css', v=4) }}">
 </head>
 <body class="members-page accept-page">
-    <header class="members-topbar"><a class="brand" href="{{ url_for('main.index') }}"><span class="brand-icon"><i class="bi bi-layers-fill" aria-hidden="true"></i></span><span><strong>Kairo</strong><small>PROJECT WORKSPACE</small></span></a><button class="theme-toggle" type="button" aria-label="Chuyển giao diện"><i class="bi bi-moon" aria-hidden="true"></i></button></header>
+    <header class="members-topbar">
+        <a class="brand" href="{{ url_for('main.index') }}">
+            <span class="brand-icon">
+                <i class="bi bi-layers-fill" aria-hidden="true"></i>
+            </span>
+            <span>
+                <strong>Kairo</strong>
+                <small>PROJECT WORKSPACE</small>
+            </span>
+        </a>
+        <button class="theme-toggle" type="button" aria-label="Chuyển giao diện">
+            <i class="bi bi-moon" aria-hidden="true"></i>
+        </button>
+    </header>
     <main class="accept-card">
-        <span class="accept-icon"><i class="bi bi-envelope-check" aria-hidden="true"></i></span>
+        <span class="accept-icon">
+            <i class="bi bi-envelope-check" aria-hidden="true"></i>
+        </span>
         <p class="eyebrow">LỜI MỜI THÀNH VIÊN</p>
         <h1>Tham gia cùng Kairo</h1>
-        <p class="subtitle">Đăng nhập bằng đúng email được mời để xác nhận quyền thành viên.</p>
-        <p id="accept-message" class="notice" role="status" aria-live="polite">Liên kết chỉ sử dụng được một lần và có thời hạn.</p>
-        <button id="accept-invitation" class="primary-button" type="button">Chấp nhận lời mời</button>
-        <div class="accept-account-links"><a class="accept-login" target="_blank" rel="noopener" href="{{ url_for('auth_pages.login') }}">Đăng nhập bằng email được mời</a><a class="accept-login" target="_blank" rel="noopener" href="{{ url_for('auth_pages.register') }}">Đăng ký bằng email được mời</a></div>
+        <p class="subtitle">
+            Đăng nhập bằng đúng email được mời để xác nhận quyền thành viên.
+        </p>
+        <p id="accept-message" class="notice" role="status" aria-live="polite">
+            Liên kết chỉ sử dụng được một lần và có thời hạn.
+        </p>
+        <button id="accept-invitation" class="primary-button" type="button">
+            Chấp nhận lời mời
+        </button>
+        <div class="accept-account-links">
+            <a class="accept-login" target="_blank" rel="noopener" href="{{ url_for('auth_pages.login') }}">
+                Đăng nhập bằng email được mời
+            </a>
+            <a class="accept-login" target="_blank" rel="noopener" href="{{ url_for('auth_pages.register') }}">
+                Đăng ký bằng email được mời
+            </a>
+        </div>
     </main>
     <script src="{{ url_for('static', filename='js/utils.js', v=1) }}" defer></script>
     <script src="{{ url_for('static', filename='js/members/shared.js', v=1) }}" defer></script>

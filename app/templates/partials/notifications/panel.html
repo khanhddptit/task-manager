@@ -5,10 +5,18 @@
     </button>
     <section class="notification-panel" id="notification-panel" aria-label="Thông báo" hidden>
         <header class="notification-panel-heading">
-            <div><h2>Thông báo</h2><span id="notification-summary">Mới nhất</span></div>
-            <div class="notification-actions"><button type="button" id="notification-read-all">Đánh dấu đã đọc</button><button type="button" id="notification-clear-read" disabled>Xóa đã đọc</button></div>
+            <div>
+                <h2>Thông báo</h2>
+                <span id="notification-summary">Mới nhất</span>
+            </div>
+            <div class="notification-actions">
+                <button type="button" id="notification-read-all">Đánh dấu đã đọc</button>
+                <button type="button" id="notification-clear-read" disabled>Xóa đã đọc</button>
+            </div>
         </header>
         <div class="notification-list" id="notification-list" aria-live="polite"></div>
-        <p class="notification-empty" id="notification-empty" hidden>Bạn chưa có thông báo nào.</p>
+        <p class="notification-empty" id="notification-empty" hidden>
+            Bạn chưa có thông báo nào.
+        </p>
     </section>
 </div>

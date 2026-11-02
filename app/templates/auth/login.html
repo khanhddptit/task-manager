@@ -16,28 +16,47 @@
     <main class="login-shell" id="main-content">
         <section class="brand-panel" aria-labelledby="brand-title">
             <a class="brand-mark" href="{{ url_for('main.index') }}" aria-label="Kairo, trang chủ">
-                <span class="brand-mark-icon"><i class="bi bi-layers-fill" aria-hidden="true"></i></span>
+                <span class="brand-mark-icon">
+                    <i class="bi bi-layers-fill" aria-hidden="true"></i>
+                </span>
                 <span>KAIRO</span>
             </a>
 
             <div class="brand-copy">
                 <p class="eyebrow"><span></span> PROJECT WORKSPACE</p>
                 <h1 id="brand-title">Một nhịp làm việc<br>rõ ràng hơn.</h1>
-                <p class="brand-description">Kairo giúp team lên kế hoạch, chia sẻ tiến độ và đưa từng ý tưởng về đích — gọn gàng trong một không gian.</p>
+                <p class="brand-description">
+                    Kairo giúp team lên kế hoạch, chia sẻ tiến độ và đưa từng ý tưởng về đích — gọn gàng trong một không gian.
+                </p>
             </div>
 
             <div class="feature-list" aria-label="Điểm nổi bật">
                 <article class="feature-item">
-                    <span class="feature-icon"><i class="bi bi-layers" aria-hidden="true"></i></span>
-                    <div><h2>Board &amp; sprint rõ ràng</h2><p>Giữ công việc và ưu tiên của cả team trong cùng một nhịp.</p></div>
+                    <span class="feature-icon">
+                        <i class="bi bi-layers" aria-hidden="true"></i>
+                    </span>
+                    <div>
+                        <h2>Board &amp; sprint rõ ràng</h2>
+                        <p>Giữ công việc và ưu tiên của cả team trong cùng một nhịp.</p>
+                    </div>
                 </article>
                 <article class="feature-item">
-                    <span class="feature-icon"><i class="bi bi-people" aria-hidden="true"></i></span>
-                    <div><h2>Team cùng workspace</h2><p>Mời thành viên, phân quyền và theo dõi task được giao.</p></div>
+                    <span class="feature-icon">
+                        <i class="bi bi-people" aria-hidden="true"></i>
+                    </span>
+                    <div>
+                        <h2>Team cùng workspace</h2>
+                        <p>Mời thành viên, phân quyền và theo dõi task được giao.</p>
+                    </div>
                 </article>
                 <article class="feature-item">
-                    <span class="feature-icon"><i class="bi bi-journal-code" aria-hidden="true"></i></span>
-                    <div><h2>Kiến thức đi cùng code</h2><p>Gom những điều team học được để lần sau làm tốt hơn.</p></div>
+                    <span class="feature-icon">
+                        <i class="bi bi-journal-code" aria-hidden="true"></i>
+                    </span>
+                    <div>
+                        <h2>Kiến thức đi cùng code</h2>
+                        <p>Gom những điều team học được để lần sau làm tốt hơn.</p>
+                    </div>
                 </article>
             </div>
 
@@ -47,7 +66,9 @@
         <section class="form-panel" aria-label="Đăng nhập Kairo">
             <div class="login-card">
                 <div class="mini-brand">
-                    <span class="mini-brand-icon"><i class="bi bi-layers-fill" aria-hidden="true"></i></span>
+                    <span class="mini-brand-icon">
+                        <i class="bi bi-layers-fill" aria-hidden="true"></i>
+                    </span>
                     <span><strong>Kairo</strong><small>PROJECT WORKSPACE</small></span>
                 </div>
 
@@ -67,23 +88,43 @@
                         </div>
                     </div>
                     <div class="field-group">
-                        <div class="field-label-row"><label for="password">Mật khẩu</label><a href="{{ url_for('auth_pages.password_reset') }}">Quên mật khẩu?</a></div>
+                        <div class="field-label-row">
+                            <label for="password">Mật khẩu</label>
+                            <a href="{{ url_for('auth_pages.password_reset') }}">Quên mật khẩu?</a>
+                        </div>
                         <div class="input-shell">
                             <i class="bi bi-lock" aria-hidden="true"></i>
                             <input id="password" name="password" type="password" autocomplete="current-password" placeholder="Nhập mật khẩu" required>
-                            <button class="password-toggle" type="button" aria-label="Hiện mật khẩu" aria-pressed="false"><i class="bi bi-eye" aria-hidden="true"></i></button>
+                            <button class="password-toggle" type="button" aria-label="Hiện mật khẩu" aria-pressed="false">
+                                <i class="bi bi-eye" aria-hidden="true"></i>
+                            </button>
                         </div>
                     </div>
                     <p class="form-feedback" id="login-feedback" role="status" aria-live="polite"></p>
-                    <button class="login-submit" type="submit">Đăng nhập <i class="bi bi-arrow-right" aria-hidden="true"></i></button>
+                    <button class="login-submit" type="submit">
+                        Đăng nhập
+                        <i class="bi bi-arrow-right" aria-hidden="true"></i>
+                    </button>
                 </form>
 
                 <div class="oauth-divider"><span>hoặc tiếp tục với</span></div>
-                <button class="google-button" type="button" data-google-login disabled><i class="bi bi-google" aria-hidden="true"></i> Google</button>
-                <p class="oauth-note" id="google-login-status" role="status">Google OAuth chưa được cấu hình.</p>
-                <div class="signup-prompt">Chưa có tài khoản? <a href="{{ url_for('auth_pages.register') }}">Tạo tài khoản</a></div>
+                <button class="google-button" type="button" data-google-login disabled>
+                    <i class="bi bi-google" aria-hidden="true"></i>
+                    Google
+                </button>
+                <p class="oauth-note" id="google-login-status" role="status">
+                    Google OAuth chưa được cấu hình.
+                </p>
+                <div class="signup-prompt">
+                    Chưa có tài khoản?
+                    <a href="{{ url_for('auth_pages.register') }}">Tạo tài khoản</a>
+                </div>
             </div>
-            <p class="form-footer">© 2026 Kairo <span>·</span> Làm việc cùng nhau, tiến xa hơn.</p>
+            <p class="form-footer">
+                © 2026 Kairo
+                <span>·</span>
+                Làm việc cùng nhau, tiến xa hơn.
+            </p>
         </section>
     </main>
     <script src="{{ url_for('static', filename='js/auth/login.js', v=6) }}" defer></script>

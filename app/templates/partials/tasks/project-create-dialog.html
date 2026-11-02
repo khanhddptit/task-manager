@@ -1,9 +1,29 @@
 <dialog class="task-dialog project-create-dialog" id="project-dialog" aria-labelledby="project-dialog-title">
     <form id="project-form" method="dialog">
-        <div class="dialog-heading"><div><p>WORKSPACE / PROJECT</p><h2 id="project-dialog-title">Tạo dự án</h2></div><button type="button" class="dialog-close" data-project-close aria-label="Đóng"><i class="bi bi-x-lg" aria-hidden="true"></i></button></div>
-        <label class="dialog-field">Tên dự án<input name="name" maxlength="100" required placeholder="Ví dụ: Stride"></label>
-        <label class="dialog-field">Mô tả<textarea name="description" rows="3" maxlength="2000" placeholder="Mục tiêu và phạm vi dự án"></textarea></label>
+        <div class="dialog-heading">
+            <div>
+                <p>WORKSPACE / PROJECT</p>
+                <h2 id="project-dialog-title">Tạo dự án</h2>
+            </div>
+            <button type="button" class="dialog-close" data-project-close aria-label="Đóng">
+                <i class="bi bi-x-lg" aria-hidden="true"></i>
+            </button>
+        </div>
+        <label class="dialog-field">
+            Tên dự án
+            <input name="name" maxlength="100" required placeholder="Ví dụ: Stride">
+        </label>
+        <label class="dialog-field">
+            Mô tả
+            <textarea name="description" rows="3" maxlength="2000" placeholder="Mục tiêu và phạm vi dự án"></textarea>
+        </label>
         <p class="project-form-error" id="project-form-error" role="alert" hidden></p>
-        <div class="dialog-actions"><span class="dialog-actions-spacer"></span><button type="button" class="secondary-button" data-project-close>Hủy</button><button type="submit" class="primary-button" id="project-submit">Tạo dự án</button></div>
+        <div class="dialog-actions">
+            <span class="dialog-actions-spacer"></span>
+            <button type="button" class="secondary-button" data-project-close>Hủy</button>
+            <button type="submit" class="primary-button" id="project-submit">
+                Tạo dự án
+            </button>
+        </div>
     </form>
 </dialog>
