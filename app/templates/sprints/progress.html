@@ -1,3 +1,13 @@
+{# 
+  Template: sprints/progress.html
+  Mục đích: Trang Thống kê & Trực quan hoá tiến độ Sprint (Sprint Burndown & Analytics).
+  Tính năng:
+  - Chọn Sprint từ dropdown để xem dữ liệu tiến độ.
+  - 4 chỉ số đo lường (KPI Cards): Tổng số task, % hoàn thành, Đang review, Số lượng quá hạn.
+  - Biểu đồ Burndown Chart động bằng SVG: So sánh tiến độ thực tế (actual) với đường lý tưởng (ideal).
+  - Phân bổ trạng thái công việc (To Do, In Progress, Review, Done) dạng thanh phần trăm.
+  - Danh sách cảnh báo các nhiệm vụ quá hạn (Overdue tasks).
+#}
 <!doctype html>
 <html lang="vi">
 <head>
@@ -5,6 +15,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="theme-color" content="#17191d">
     <title>Tiến độ Sprint | Kairo</title>
+
+    <!-- Phông chữ Google Fonts & Biểu tượng Bootstrap Icons -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Manrope:wght@500;600;700;800&display=swap" rel="stylesheet">
@@ -14,8 +26,11 @@
     <link rel="stylesheet" href="{{ url_for('static', filename='css/notifications.css', v=2) }}">
 </head>
 <body class="kanban-page sprint-page" data-page="progress">
+    <!-- Thanh điều hướng bên (Sidebar) dùng chung -->
     {% include 'partials/layout/app-sidebar.html' %}
+
     <div class="app-shell">
+        <!-- Thanh công cụ trên cùng (Topbar) -->
         <header class="topbar">
             <div class="breadcrumbs">
                 <span class="breadcrumb-dot"></span>
@@ -30,7 +45,10 @@
                 {% include 'partials/notifications/panel.html' %}
             </div>
         </header>
+
+        <!-- Nội dung chính của trang Tiến độ Sprint -->
         <main class="sprint-main progress-main">
+            <!-- Tiêu đề trang & Nút quay lại danh sách Sprint -->
             <section class="sprint-heading">
                 <div>
                     <p class="project-overline">PROJECT / ANALYTICS</p>
@@ -44,6 +62,8 @@
                     Danh sách Sprint
                 </a>
             </section>
+
+            <!-- Thanh công cụ chọn Dự án & chọn Sprint cần xem -->
             <div class="sprint-toolbar">
                 <label for="project-select">
                     <i class="bi bi-folder2" aria-hidden="true"></i>
@@ -58,8 +78,12 @@
                     </select>
                 </label>
             </div>
+
             <div class="sprint-notice" id="sprint-notice" role="status" hidden></div>
+
+            <!-- Khối chi tiết tiến độ Sprint (Hiển thị khi đã chọn 1 Sprint) -->
             <section id="progress-content" hidden>
+                <!-- Tiêu đề Sprint & Khoảng thời gian -->
                 <div class="progress-title-row">
                     <div>
                         <span class="sprint-status-pill" id="progress-status"></span>
@@ -68,6 +92,8 @@
                     </div>
                     <div class="sprint-date-range" id="progress-dates"></div>
                 </div>
+
+                <!-- Lưới 4 thẻ thống kê tổng quan (Metrics Cards) -->
                 <div class="progress-stat-grid">
                     <article class="progress-stat">
                         <span>Task tổng</span>
@@ -93,6 +119,8 @@
                         <small>Task chưa hoàn thành</small>
                     </article>
                 </div>
+
+                <!-- Biểu đồ Burndown Chart (Vẽ bằng SVG qua sprint-progress.js) -->
                 <section class="progress-panel">
                     <div class="progress-panel-heading">
                         <div>
@@ -112,7 +140,10 @@
                     </div>
                     <div class="burndown-chart" id="burndown-chart" role="img" aria-label="Biểu đồ số task còn lại theo ngày"></div>
                 </section>
+
+                <!-- Hai cột: Phân bổ trạng thái công việc & Danh sách task quá hạn -->
                 <div class="progress-columns">
+                    <!-- Phân bố tỷ lệ trạng thái -->
                     <section class="progress-panel status-panel">
                         <div class="progress-panel-heading">
                             <div>
@@ -122,6 +153,8 @@
                         </div>
                         <div class="status-breakdown" id="status-breakdown"></div>
                     </section>
+
+                    <!-- Danh sách task bị trễ hạn -->
                     <section class="progress-panel overdue-panel">
                         <div class="progress-panel-heading">
                             <div>
@@ -133,6 +166,8 @@
                     </section>
                 </div>
             </section>
+
+            <!-- Trạng thái rỗng khi chưa chọn Sprint -->
             <div class="sprint-empty" id="progress-empty">
                 <span>
                     <i class="bi bi-bar-chart-line" aria-hidden="true"></i>
@@ -142,7 +177,10 @@
             </div>
         </main>
     </div>
+
     <div class="toast-message" id="toast-message" role="status" aria-live="polite"></div>
+
+    <!-- Module ES6 điều phối logic Sprint và Biểu đồ Burndown -->
     <script type="module" src="{{ url_for('static', filename='js/sprints/page.js', v=1) }}"></script>
     <script src="{{ url_for('static', filename='js/notifications.js', v=7) }}" defer></script>
 </body>

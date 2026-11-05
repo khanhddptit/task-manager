@@ -1,12 +1,34 @@
+/**
+ * @fileoverview Quản lý trang Cài đặt tài khoản (User Account Settings).
+ * Tính năng chính:
+ * - Chuyển đổi giao diện Sáng / Tối (Dark/Light Mode) và lưu vào localStorage.
+ * - Tải và hiển thị thông tin hồ sơ người dùng (`/auth/me`).
+ * - Cập nhật tên hiển thị, email (`PATCH /auth/me`).
+ * - Đổi mật khẩu hoặc tạo mật khẩu mới đối với tài khoản đăng nhập lần đầu qua Google (`POST /auth/password`).
+ * - Xem trước (preview) và tải lên ảnh đại diện avatar (tối đa 2MB, JPEG/PNG/WebP) (`POST /auth/me/avatar`).
+ * - Xoá ảnh đại diện hiện tại (`DELETE /auth/me/avatar`).
+ * - Liên kết tài khoản Google OAuth (`/auth/google/link`).
+ * - Đăng xuất khỏi hệ thống (`POST /auth/logout`).
+ */
+
+// Các phần tử DOM giao diện cài đặt tài khoản
 const profileForm = document.querySelector("#profile-form");
 const passwordForm = document.querySelector("#password-form");
 const avatarInput = document.querySelector("#avatar-file");
 const avatarImage = document.querySelector("#avatar-image");
 const avatarInitials = document.querySelector("#avatar-initials");
-const MAX_AVATAR_BYTES = 2 * 1024 * 1024;
+
+// Ràng buộc ảnh đại diện
+const MAX_AVATAR_BYTES = 2 * 1024 * 1024; // Giới hạn kích thước ảnh 2MB
 const ALLOWED_AVATAR_TYPES = new Set(["image/jpeg", "image/png", "image/webp"]);
 const { getInitials } = window.KairoUtils;
 
+// ── Quản lý Chủ đề giao diện (Theme Switcher) ─────────────────────────────────
+
+/**
+ * Cập nhật class trên body, thẻ meta theme-color và icon nút chuyển đổi giao diện.
+ * @param {'dark'|'light'} theme - Tên chủ đề cần áp dụng.
+ */
 function applySettingsTheme(theme) {
     const dark = theme === "dark";
     document.body.classList.toggle("theme-dark", dark);
@@ -18,20 +40,35 @@ function applySettingsTheme(theme) {
     }
 }
 
+// Khởi tạo chủ đề từ localStorage (mặc định là dark mode)
 let savedTheme = "dark";
-try { savedTheme = window.localStorage.getItem("kairo-kanban-theme") || "dark"; } catch (_) { /* Use the shared default. */ }
+try { savedTheme = window.localStorage.getItem("kairo-kanban-theme") || "dark"; } catch (_) { /* Dùng mặc định */ }
 applySettingsTheme(savedTheme);
+
+// Đăng ký sự kiện chuyển đổi theme khi người dùng nhấn nút toggle
 document.querySelector("#settings-theme-toggle")?.addEventListener("click", () => {
     const theme = document.body.classList.contains("theme-dark") ? "light" : "dark";
     applySettingsTheme(theme);
-    try { window.localStorage.setItem("kairo-kanban-theme", theme); } catch (_) { /* Keep this page's selection. */ }
+    try { window.localStorage.setItem("kairo-kanban-theme", theme); } catch (_) { /* Giữ lựa chọn trên trang hiện tại */ }
 });
 
+// ── Tiện ích hỗ trợ API & Phản hồi giao diện ──────────────────────────────────
+
+/**
+ * Gán thông báo phản hồi trạng thái cho thẻ feedback tương ứng.
+ * @param {HTMLElement} element - Thẻ DOM hiển thị thông báo.
+ * @param {string} message - Nội dung thông báo.
+ * @param {boolean} [success=false] - True nếu là thông báo thành công (màu xanh lá).
+ */
 function setFeedback(element, message, success = false) {
     element.textContent = message;
     element.classList.toggle("is-success", success);
 }
 
+/**
+ * Lấy CSRF token từ endpoint `/auth/csrf`.
+ * @returns {Promise<string>} Chuỗi CSRF token hợp lệ.
+ */
 async function getCsrfToken() {
     const response = await fetch("/auth/csrf");
     const result = await response.json();
@@ -39,6 +76,11 @@ async function getCsrfToken() {
     return result.csrf_token;
 }
 
+/**
+ * Đọc phản hồi JSON từ API và xử lý chuyển hướng khi hết hạn đăng nhập (401) hoặc ném lỗi.
+ * @param {Response} response - Phản hồi từ fetch.
+ * @returns {Promise<Object>} Dữ liệu JSON từ máy chủ.
+ */
 async function readResponse(response) {
     const result = await response.json();
     if (response.status === 401) {
@@ -52,10 +94,15 @@ async function readResponse(response) {
     return result;
 }
 
+/**
+ * Cập nhật avatar ảnh hoặc hiển thị chữ viết tắt họ tên (initials) nếu chưa có ảnh.
+ * @param {Object} user - Đối tượng thông tin người dùng.
+ */
 function updateAvatar(user) {
     const name = user.display_name || user.username || "Kairo";
     avatarInitials.textContent = getInitials(name, { fallback: "K" });
     if (user.avatar_url) {
+        // Thêm tham số timestamp để tránh cache ảnh cũ trên trình duyệt
         avatarImage.src = `${user.avatar_url}?v=${Date.now()}`;
         avatarImage.hidden = false;
         avatarInitials.hidden = true;
@@ -66,13 +113,21 @@ function updateAvatar(user) {
     }
 }
 
+/**
+ * Cập nhật trạng thái hiển thị của phần liên kết tài khoản Google OAuth.
+ * @param {Object} user - Đối tượng người dùng hiện tại.
+ */
 async function updateGoogleLinkState(user) {
     const button = document.querySelector("#google-link-button");
     const status = document.querySelector("#google-link-status");
     const query = new URLSearchParams(window.location.search);
+
+    // Kiểm tra query string sau khi redirect từ luồng OAuth thành công
     if (query.get("google") === "linked") {
         setFeedback(document.querySelector("#google-feedback"), "Đã liên kết tài khoản Google.", true);
     }
+
+    // Hiển thị thông báo lỗi nếu có lỗi từ luồng liên kết OAuth
     const oauthError = query.get("oauth_error");
     if (oauthError) {
         const messages = {
@@ -93,12 +148,16 @@ async function updateGoogleLinkState(user) {
         };
         setFeedback(document.querySelector("#google-feedback"), messages[oauthError] || "Không thể liên kết Google.");
     }
+
+    // Nếu tài khoản đã liên kết Google từ trước
     if (user.google_connected) {
         status.textContent = "Đã liên kết với tài khoản này.";
         button.textContent = "Đã liên kết";
         button.disabled = true;
         return;
     }
+
+    // Kiểm tra cấu hình Google OAuth từ máy chủ
     try {
         const response = await fetch("/auth/google/status");
         const result = await response.json();
@@ -115,18 +174,26 @@ async function updateGoogleLinkState(user) {
     }
 }
 
+/**
+ * Tải toàn bộ thông tin tài khoản hiện tại từ API `/auth/me` và đổ vào các form.
+ */
 async function loadSettings() {
     try {
         const response = await fetch("/auth/me");
         const result = await readResponse(response);
         const user = result.user;
+
+        // Điền dữ liệu form thông tin cá nhân
         profileForm.elements.display_name.value = user.display_name || "";
         profileForm.elements.email.value = user.email || "";
         profileForm.elements.username.value = user.username;
         updateAvatar(user);
+
+        // Kiểm tra xem user có mật khẩu chưa hay chỉ đăng nhập qua Google
         const passwordLoginEnabled = user.password_login_enabled !== false;
         const currentPasswordField = document.querySelector("#current-password-field");
         const currentPasswordInput = passwordForm.elements.current_password;
+
         currentPasswordField.hidden = !passwordLoginEnabled;
         currentPasswordInput.disabled = !passwordLoginEnabled;
         currentPasswordInput.required = passwordLoginEnabled;
@@ -134,6 +201,7 @@ async function loadSettings() {
         document.querySelector("#password-submit").innerHTML = passwordLoginEnabled
             ? '<i class="bi bi-key" aria-hidden="true"></i> Cập nhật mật khẩu'
             : '<i class="bi bi-key" aria-hidden="true"></i> Đặt mật khẩu';
+
         await updateGoogleLinkState(user);
     } catch (error) {
         if (error.message !== "Phiên đăng nhập đã hết hạn.") {
@@ -142,12 +210,15 @@ async function loadSettings() {
     }
 }
 
+// ── Xử lý lưu thông tin hồ sơ (Tên hiển thị & Email) ──────────────────────────
 profileForm.addEventListener("submit", async (event) => {
     event.preventDefault();
     if (!profileForm.reportValidity()) return;
+
     const button = profileForm.querySelector("[type='submit']");
     button.disabled = true;
     setFeedback(document.querySelector("#profile-feedback"), "Đang lưu…");
+
     try {
         const token = await getCsrfToken();
         const response = await fetch("/auth/me", {
@@ -170,12 +241,15 @@ profileForm.addEventListener("submit", async (event) => {
     }
 });
 
+// ── Xử lý cập nhật hoặc tạo mới mật khẩu ──────────────────────────────────────
 passwordForm.addEventListener("submit", async (event) => {
     event.preventDefault();
     if (!passwordForm.reportValidity()) return;
+
     const button = passwordForm.querySelector("[type='submit']");
     button.disabled = true;
     setFeedback(document.querySelector("#password-feedback"), "Đang cập nhật…");
+
     try {
         const token = await getCsrfToken();
         const response = await fetch("/auth/password", {
@@ -190,6 +264,8 @@ passwordForm.addEventListener("submit", async (event) => {
         const result = await readResponse(response);
         const wasGoogleOnly = passwordForm.elements.current_password.disabled;
         passwordForm.reset();
+
+        // Nếu trước đó tài khoản chưa có mật khẩu, giờ kích hoạt ô nhập mật khẩu hiện tại
         if (wasGoogleOnly) {
             document.querySelector("#current-password-field").hidden = false;
             passwordForm.elements.current_password.disabled = false;
@@ -205,29 +281,37 @@ passwordForm.addEventListener("submit", async (event) => {
     }
 });
 
+// ── Xử lý chọn và tải lên ảnh đại diện Avatar mới ────────────────────────────
 avatarInput.addEventListener("change", async () => {
     const file = avatarInput.files?.[0];
     if (!file) return;
+
+    // Kiểm tra định dạng tệp ảnh
     if (!ALLOWED_AVATAR_TYPES.has(file.type)) {
         setFeedback(document.querySelector("#avatar-feedback"), "Chỉ chấp nhận ảnh JPEG, PNG hoặc WebP.");
         avatarInput.value = "";
         return;
     }
+
+    // Kiểm tra dung lượng tối đa 2MB
     if (file.size > MAX_AVATAR_BYTES) {
         setFeedback(document.querySelector("#avatar-feedback"), "Ảnh đại diện tối đa 2 MB.");
         avatarInput.value = "";
         return;
     }
 
+    // Xem trước ảnh ngay lập tức bằng Object URL
     const previewUrl = URL.createObjectURL(file);
     avatarImage.src = previewUrl;
     avatarImage.hidden = false;
     avatarInitials.hidden = true;
     setFeedback(document.querySelector("#avatar-feedback"), "Đang tải ảnh…");
+
     try {
         const token = await getCsrfToken();
         const formData = new FormData();
         formData.append("avatar", file);
+
         const response = await fetch("/auth/me/avatar", {
             method: "POST",
             headers: { "X-CSRFToken": token },
@@ -245,9 +329,11 @@ avatarInput.addEventListener("change", async () => {
     }
 });
 
+// ── Xử lý xoá ảnh đại diện (trở về avatar chữ cái mặc định) ────────────────────
 document.querySelector("#remove-avatar").addEventListener("click", async () => {
     const button = document.querySelector("#remove-avatar");
     button.disabled = true;
+
     try {
         const token = await getCsrfToken();
         const response = await fetch("/auth/me/avatar", {
@@ -264,12 +350,14 @@ document.querySelector("#remove-avatar").addEventListener("click", async () => {
     }
 });
 
+// ── Xử lý chuyển hướng liên kết tài khoản Google ──────────────────────────────
 document.querySelector("#google-link-button").addEventListener("click", () => {
     if (!document.querySelector("#google-link-button").disabled) {
         window.location.assign("/auth/google/link");
     }
 });
 
+// ── Xử lý đăng xuất từ trang cài đặt ─────────────────────────────────────────
 document.querySelector("#logout-button").addEventListener("click", async () => {
     try {
         const token = await getCsrfToken();
@@ -285,4 +373,5 @@ document.querySelector("#logout-button").addEventListener("click", async () => {
     }
 });
 
+// Khởi chạy nạp thông tin cài đặt khi trang được mở
 loadSettings();

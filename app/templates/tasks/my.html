@@ -1,3 +1,12 @@
+{# 
+  Template: tasks/my.html
+  Mục đích: Trang tổng hợp công việc cá nhân được giao ("Việc của tôi" / My Tasks).
+  Tính năng:
+  - Tải tất cả công việc của user trên các dự án và workspace khác nhau.
+  - Toolbar lọc: Tìm kiếm theo tên/dự án, lọc trạng thái, lọc mức độ ưu tiên, sắp xếp (hạn gần nhất, tên, ưu tiên).
+  - Nút chuyển đổi gom nhóm (#group-switch): Theo Dự án (Project) hoặc Theo Hạn hoàn thành (Due date).
+  - Vùng chứa danh sách các nhóm công việc (#my-task-groups) được render bằng JavaScript qua my-tasks.js.
+#}
 <!doctype html>
 <html lang="vi">
 <head>
@@ -5,6 +14,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="theme-color" content="#17191d">
     <title>Việc của tôi | Kairo</title>
+
+    <!-- Phông chữ Google Fonts & Biểu tượng Bootstrap Icons -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Manrope:wght@500;600;700;800&display=swap" rel="stylesheet">
@@ -15,8 +26,12 @@
 </head>
 <body class="kanban-page my-tasks-page" data-page="my-tasks">
     <a class="skip-link" href="#my-tasks-main">Đến nội dung chính</a>
+
+    <!-- Thanh điều hướng bên (Sidebar) dùng chung -->
     {% include 'partials/layout/app-sidebar.html' %}
+
     <div class="app-shell">
+        <!-- Thanh công cụ trên cùng (Topbar) -->
         <header class="topbar">
             <div class="breadcrumbs">
                 <span class="breadcrumb-dot"></span>
@@ -25,13 +40,18 @@
                 <span class="breadcrumb-current">Việc của tôi</span>
             </div>
             <div class="topbar-actions">
+                <!-- Nút chuyển đổi Dark/Light mode -->
                 <button type="button" class="topbar-icon" id="theme-toggle" aria-label="Đổi giao diện">
                     <i class="bi bi-moon" aria-hidden="true"></i>
                 </button>
+                <!-- Panel thông báo thời gian thực -->
                 {% include 'partials/notifications/panel.html' %}
             </div>
         </header>
+
+        <!-- Nội dung chính: Danh sách công việc cá nhân -->
         <main class="my-tasks-main" id="my-tasks-main">
+            <!-- Tiêu đề trang & Tổng số công việc hiển thị -->
             <section class="my-tasks-heading">
                 <div>
                     <p class="project-overline">PERSONAL OVERVIEW</p>
@@ -45,12 +65,16 @@
                     <span>task</span>
                 </div>
             </section>
+
+            <!-- Thanh công cụ tìm kiếm, bộ lọc và chuyển đổi chế độ nhóm -->
             <section class="my-tasks-toolbar" aria-label="Bộ lọc task">
+                <!-- Tìm kiếm theo tên task hoặc tên dự án -->
                 <label class="my-task-search">
                     <i class="bi bi-search" aria-hidden="true"></i>
                     <span class="sr-only">Tìm task</span>
                     <input id="task-search" type="search" placeholder="Tìm theo task hoặc dự án…" autocomplete="off">
                 </label>
+                <!-- Lọc theo trạng thái -->
                 <label class="my-task-filter">
                     <span class="sr-only">Lọc theo trạng thái</span>
                     <select id="status-filter">
@@ -61,6 +85,7 @@
                         <option value="done">Hoàn thành</option>
                     </select>
                 </label>
+                <!-- Lọc theo mức độ ưu tiên -->
                 <label class="my-task-filter">
                     <span class="sr-only">Lọc theo ưu tiên</span>
                     <select id="priority-filter">
@@ -70,6 +95,7 @@
                         <option value="low">Thấp</option>
                     </select>
                 </label>
+                <!-- Sắp xếp theo hạn chót / tên / ưu tiên -->
                 <label class="my-task-filter my-task-sort">
                     <span class="sort-label">Sắp xếp</span>
                     <select id="sort-select">
@@ -78,6 +104,7 @@
                         <option value="priority">Ưu tiên</option>
                     </select>
                 </label>
+                <!-- Nhóm task theo Dự án hoặc Hạn hoàn thành -->
                 <div class="group-switch" role="group" aria-label="Nhóm task">
                     <button type="button" class="selected" data-group="project" aria-pressed="true">
                         <i class="bi bi-folder2" aria-hidden="true"></i>
@@ -89,8 +116,13 @@
                     </button>
                 </div>
             </section>
+
             <div class="my-tasks-notice" id="my-tasks-notice" role="status" aria-live="polite" hidden></div>
+
+            <!-- Khu vực chứa các bảng nhóm công việc (Render qua my-tasks.js) -->
             <section class="my-task-groups" id="my-task-groups" aria-live="polite" aria-busy="true"></section>
+
+            <!-- Trạng thái rỗng khi không có task nào phù hợp bộ lọc -->
             <div class="my-task-empty" id="my-task-empty" hidden>
                 <span>
                     <i class="bi bi-check2-circle" aria-hidden="true"></i>
@@ -102,7 +134,10 @@
             </div>
         </main>
     </div>
+
     <div class="toast-message" id="toast-message" role="status" aria-live="polite"></div>
+
+    <!-- Script điều khiển trang việc cá nhân -->
     <script src="{{ url_for('static', filename='js/tasks/my-tasks.js', v=1) }}" defer></script>
     <script src="{{ url_for('static', filename='js/notifications.js', v=7) }}" defer></script>
 </body>

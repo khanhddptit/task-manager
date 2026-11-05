@@ -1,8 +1,27 @@
+/**
+ * @fileoverview Quản lý thành viên và lời mời tham gia trong phạm vi Workspace hoặc Project (Member Management Module).
+ * Tính năng chính:
+ * - Hiển thị danh sách thành viên hiện tại: avatar, tên, email, huy hiệu vai trò (Owner, Admin, Member).
+ * - Phân quyền quản trị viên:
+ *   + Nâng/hạ vai trò (Admin <-> Member).
+ *   + Chuyển giao quyền sở hữu Workspace (Transfer Owner) cho thành viên khác.
+ *   + Gỡ thành viên ra khỏi Workspace hoặc Project.
+ * - Cho phép thành viên tự rời khỏi Workspace (`#leave-workspace`).
+ * - Quản lý lời mời (Invitations):
+ *   + Mời qua email hoặc thêm nhanh từ thành viên sẵn có của Workspace (đối với Project).
+ *   + Hiển thị liên kết mời kèm nút sao chép nhanh vào clipboard.
+ *   + Danh sách các lời mời đang chờ (Pending Invitations): gửi lại (resend) hoặc thu hồi (revoke).
+ * - Chỉnh sửa thông tin hoặc xoá Workspace/Project (`#edit-resource`, `#delete-resource`).
+ */
+
 if (memberPage) {
+    // Các endpoint API từ dataset của phần tử `.members-page`
     const memberUrl = memberPage.dataset.membersUrl;
     const invitationsUrl = memberPage.dataset.invitationsUrl;
     const inviteUrl = memberPage.dataset.invitationUrl;
     const scope = memberPage.dataset.scope;
+
+    // Breadcrumb điều hướng quay lại bảng công việc nếu đang ở phạm vi Project
     const breadcrumbResource = document.querySelector("#resource-breadcrumb-name");
     if (breadcrumbResource && scope === "project") {
         breadcrumbResource.setAttribute("role", "link");
@@ -17,6 +36,8 @@ if (memberPage) {
             if (event.key === "Enter" || event.key === " ") goToProject();
         });
     }
+
+    // Các phần tử DOM của trang quản lý thành viên
     const addButton = document.querySelector("#add-member");
     const leaveWorkspaceButton = document.querySelector("#leave-workspace");
     const dialog = document.querySelector("#invite-dialog");
@@ -33,13 +54,21 @@ if (memberPage) {
     const resourceName = document.querySelector("#resource-name");
     const resourceDescription = document.querySelector("#resource-description");
     const resourceError = document.querySelector("#resource-error");
+
     let resource = null;
     let projectMemberIds = new Set();
     const workspaceMemberSelect = document.querySelector("#workspace-member-select");
+
+    // Nếu đã chọn thành viên từ dropdown workspace thì không bắt buộc nhập email
     workspaceMemberSelect?.addEventListener("change", () => {
         inviteEmail.required = !workspaceMemberSelect.value;
     });
 
+    // ── 1. Quản lý thông tin Workspace / Project (Resource) ──────────────────────
+
+    /**
+     * Tải thông tin tài nguyên (Workspace hoặc Project) và kiểm tra quyền sửa/xoá.
+     */
     async function loadResource() {
         try {
             const result = await requestJson(resourceUrl);
@@ -63,6 +92,7 @@ if (memberPage) {
         }
     }
 
+    // Mở hộp thoại sửa tên & mô tả Workspace / Project
     document.querySelector("#edit-resource").addEventListener("click", () => {
         if (!resource) return;
         resourceName.value = resource.name || "";
@@ -71,10 +101,13 @@ if (memberPage) {
         resourceDialog.showModal();
         resourceName.focus();
     });
+
     document.querySelector("[data-close-resource-dialog]").addEventListener("click", () => resourceDialog.close());
     resourceDialog.addEventListener("click", (event) => {
         if (event.target === resourceDialog) resourceDialog.close();
     });
+
+    // Gửi form cập nhật tài nguyên qua PATCH
     resourceForm.addEventListener("submit", async (event) => {
         event.preventDefault();
         const name = resourceName.value.trim();
@@ -102,6 +135,8 @@ if (memberPage) {
             submit.disabled = false;
         }
     });
+
+    // Xử lý xoá Workspace hoặc Project
     document.querySelector("#delete-resource").addEventListener("click", async (event) => {
         if (!resource) return;
         const button = event.currentTarget;
@@ -122,6 +157,12 @@ if (memberPage) {
         }
     });
 
+    // ── 2. Quản lý Lời mời (Invitations) ──────────────────────────────────────────
+
+    /**
+     * Hiển thị hộp chia sẻ link lời mời sau khi tạo hoặc gửi lại thành công.
+     * @param {Object} invitation - Đối tượng lời mời từ API.
+     */
     function showInvitationLink(invitation) {
         inviteForm.reset();
         if (workspaceMemberSelect) inviteEmail.required = true;
@@ -134,6 +175,10 @@ if (memberPage) {
         if (!dialog.open) dialog.showModal();
     }
 
+    /**
+     * Tải danh sách các lời mời đang chờ xử lý (Pending Invitations).
+     * @param {boolean} canManage - Có quyền quản lý lời mời hay không.
+     */
     async function loadInvitations(canManage) {
         const pendingCard = document.querySelector("#pending-card");
         if (!canManage) {
@@ -144,19 +189,25 @@ if (memberPage) {
             const data = await requestJson(invitationsUrl);
             const rows = document.querySelector("#invitation-rows");
             rows.replaceChildren();
+
             data.invitations.forEach((invitation) => {
                 const row = document.createElement("tr");
                 const email = document.createElement("td");
                 email.textContent = invitation.email;
+
                 const roleCell = document.createElement("td");
                 const role = document.createElement("span");
                 role.className = "role-badge role-member";
                 role.textContent = "Member";
                 roleCell.append(role);
+
                 const expires = document.createElement("td");
                 expires.textContent = formatDateTime(invitation.expires_at);
+
                 const actions = document.createElement("td");
                 actions.className = "actions-cell";
+
+                // Nút gửi lại lời mời (tạo token mới)
                 const resend = document.createElement("button");
                 resend.type = "button";
                 resend.className = "text-button";
@@ -177,6 +228,8 @@ if (memberPage) {
                         resend.disabled = false;
                     }
                 });
+
+                // Nút thu hồi lời mời
                 const revoke = document.createElement("button");
                 revoke.type = "button";
                 revoke.className = "text-button danger-button";
@@ -196,6 +249,7 @@ if (memberPage) {
                         revoke.disabled = false;
                     }
                 });
+
                 actions.append(resend, revoke);
                 row.append(email, roleCell, expires, actions);
                 rows.append(row);
@@ -206,6 +260,11 @@ if (memberPage) {
         }
     }
 
+    // ── 3. Quản lý Danh sách Thành viên (Members List) ───────────────────────────
+
+    /**
+     * Nạp toàn bộ danh sách thành viên hiện tại và render bảng quản lý.
+     */
     async function loadMembers() {
         try {
             const data = await requestJson(memberUrl);
@@ -214,16 +273,21 @@ if (memberPage) {
             rows.replaceChildren();
             document.querySelector("#member-count").textContent = `${data.members.length} thành viên`;
             addButton.hidden = !data.can_manage;
+
+            // Kiểm tra nút "Rời Workspace"
             const currentMember = data.members.find(
                 (member) => (member.user_id ?? member.id) === data.current_user_id
             );
             leaveWorkspaceButton.hidden = scope !== "workspace"
                 || !currentMember
                 || currentMember.role === "owner";
+
             data.members.forEach((member) => {
                 const id = member.user_id ?? member.id;
                 const name = member.display_name || member.username || member.email || "Thành viên";
                 const row = document.createElement("tr");
+
+                // Cột thông tin thành viên (Avatar + Tên)
                 const personCell = document.createElement("td");
                 const person = document.createElement("div");
                 person.className = "person-cell";
@@ -236,21 +300,30 @@ if (memberPage) {
                 memberName.textContent = name;
                 person.append(avatar, memberName);
                 personCell.append(person);
+
+                // Cột Email
                 const email = document.createElement("td");
                 email.textContent = member.email || "—";
+
+                // Cột Vai trò (Role Badge)
                 const roleCell = document.createElement("td");
                 const role = document.createElement("span");
                 role.className = `role-badge role-${member.role}`;
                 role.textContent = member.role === "owner" ? "Owner" : member.role === "admin" ? "Admin" : "Member";
                 roleCell.append(role);
+
+                // Cột Hành động (Actions)
                 const actions = document.createElement("td");
                 actions.className = "actions-cell";
                 let hasAction = false;
+
+                // Điều kiện được đổi vai trò (Lên Admin / Xuống Member)
                 const canChangeRole = data.can_manage && (
                     (data.can_manage_admins && id !== data.current_user_id && member.role !== "owner")
                     || (scope === "project" && !data.can_manage_admins && member.role === "member")
                     || (scope === "workspace" && !data.can_manage_admins && id === data.current_user_id && member.role === "admin")
                 );
+
                 if (canChangeRole) {
                     const nextRole = member.role === "member" ? "admin" : "member";
                     const changeRole = document.createElement("button");
@@ -276,6 +349,8 @@ if (memberPage) {
                     actions.append(changeRole);
                     hasAction = true;
                 }
+
+                // Chuyển quyền Owner (Chỉ Owner hiện tại của Workspace mới có quyền)
                 if (scope === "workspace" && data.can_manage_admins && id !== data.current_user_id) {
                     const transfer = document.createElement("button");
                     transfer.type = "button";
@@ -300,6 +375,8 @@ if (memberPage) {
                     actions.append(transfer);
                     hasAction = true;
                 }
+
+                // Gỡ thành viên khỏi Workspace/Project
                 const canRemove = data.can_manage && id !== data.current_user_id && member.role !== "owner" && (data.can_manage_admins || member.role === "member");
                 if (canRemove) {
                     const remove = document.createElement("button");
@@ -325,10 +402,12 @@ if (memberPage) {
                     actions.append(remove);
                     hasAction = true;
                 }
+
                 if (!hasAction) actions.textContent = "—";
                 row.append(personCell, email, roleCell, actions);
                 rows.append(row);
             });
+
             if (!data.members.length) setEmptyRow(rows, "Chưa có thành viên nào.", 4);
             await loadInvitations(data.can_manage);
         } catch (error) {
@@ -338,6 +417,7 @@ if (memberPage) {
         }
     }
 
+    // ── 4. Rời khỏi Workspace ───────────────────────────────────────────────────
     leaveWorkspaceButton.addEventListener("click", async () => {
         if (!await window.kairoConfirm("Rời Workspace này? Bạn sẽ mất quyền truy cập vào các project trong đó.", { title: "Rời Workspace", confirmLabel: "Rời Workspace" })) return;
         leaveWorkspaceButton.disabled = true;
@@ -352,12 +432,16 @@ if (memberPage) {
             leaveWorkspaceButton.disabled = false;
         }
     });
+
+    // ── 5. Mở Modal Mời Thành Viên ──────────────────────────────────────────────
     addButton.addEventListener("click", () => {
         inviteForm.reset();
         inviteError.hidden = true;
         shareBox.hidden = true;
         document.querySelector(".dialog-submit").hidden = false;
         dialog.showModal();
+
+        // Nếu ở Project, tải danh sách các thành viên trong workspace chưa tham gia project này
         if (workspaceMemberSelect) {
             requestJson(`/workspaces/${memberPage.dataset.workspaceId}/members`).then((result) => {
                 workspaceMemberSelect.replaceChildren(new Option("Chọn thành viên có sẵn", ""));
@@ -368,18 +452,23 @@ if (memberPage) {
         }
         inviteEmail.focus();
     });
+
     document.querySelector("[data-close-dialog]").addEventListener("click", () => dialog.close());
     dialog.addEventListener("click", (event) => {
         if (event.target === dialog) dialog.close();
     });
+
+    // Gửi form mời thành viên (Thêm nhanh user_id hoặc tạo thư mời qua email)
     inviteForm.addEventListener("submit", async (event) => {
         event.preventDefault();
         inviteError.hidden = true;
         const submit = inviteForm.querySelector(".dialog-submit");
         submit.disabled = true;
+
         try {
             const selectedUserId = workspaceMemberSelect?.value;
             if (selectedUserId) {
+                // Thêm trực tiếp thành viên workspace vào project
                 await requestJson(memberUrl, {
                     method: "POST",
                     headers: csrfHeaders(),
@@ -390,6 +479,8 @@ if (memberPage) {
                 showNotice("Đã thêm thành viên vào Project.");
                 return;
             }
+
+            // Gửi email mời thành viên mới
             const result = await requestJson(inviteUrl, {
                 method: "POST",
                 headers: csrfHeaders(),
@@ -405,6 +496,8 @@ if (memberPage) {
             submit.disabled = false;
         }
     });
+
+    // Sao chép liên kết mời vào bộ nhớ tạm (Clipboard)
     document.querySelector("#copy-invite").addEventListener("click", async () => {
         try {
             await navigator.clipboard.writeText(inviteLink.value);
@@ -415,6 +508,8 @@ if (memberPage) {
             document.querySelector("#copy-invite").textContent = "Đã sao chép";
         }
     });
+
+    // Khởi tạo nạp dữ liệu
     loadMembers();
     loadResource();
 }

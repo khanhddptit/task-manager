@@ -1,8 +1,21 @@
+{# 
+  Partial: partials/notifications/panel.html
+  Mục đích: Khung chuông thông báo và dropdown panel danh sách thông báo thời gian thực trên Topbar.
+  Tính năng:
+  - Nút chuông thông báo (#notification-toggle) kèm huy hiệu số thông báo chưa đọc (#notification-badge).
+  - Dropdown panel (#notification-panel) hiển thị 20 thông báo gần nhất.
+  - Các nút hành động: "Đánh dấu đã đọc" (#notification-read-all) và "Xóa đã đọc" (#notification-clear-read).
+  - Danh sách thông báo dạng động (#notification-list) nạp qua notifications.js hoặc Socket.IO.
+#}
 <div class="notification-wrap">
+    <!-- Nút bật/tắt hiển thị panel thông báo -->
     <button type="button" class="topbar-icon notification-toggle" id="notification-toggle" aria-label="Thông báo" aria-expanded="false" aria-controls="notification-panel">
         <i class="bi bi-bell" aria-hidden="true"></i>
+        <!-- Huy hiệu số thông báo chưa đọc -->
         <span class="notification-badge" id="notification-badge" hidden></span>
     </button>
+
+    <!-- Khung bảng thông báo (Dropdown Panel) -->
     <section class="notification-panel" id="notification-panel" aria-label="Thông báo" hidden>
         <header class="notification-panel-heading">
             <div>
@@ -14,7 +27,11 @@
                 <button type="button" id="notification-clear-read" disabled>Xóa đã đọc</button>
             </div>
         </header>
+
+        <!-- Danh sách các thông báo được đổ dữ liệu qua JavaScript -->
         <div class="notification-list" id="notification-list" aria-live="polite"></div>
+
+        <!-- Trạng thái khi không có thông báo nào -->
         <p class="notification-empty" id="notification-empty" hidden>
             Bạn chưa có thông báo nào.
         </p>

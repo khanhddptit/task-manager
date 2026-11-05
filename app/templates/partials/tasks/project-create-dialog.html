@@ -1,5 +1,13 @@
+{# 
+  Partial: partials/tasks/project-create-dialog.html
+  Mục đích: Hộp thoại Modal (<dialog id="project-dialog">) tạo mới Dự án trong Workspace.
+  Tính năng:
+  - Form nhập tên dự án (bắt buộc, tối đa 100 ký tự) và mô tả dự án (tối đa 2000 ký tự).
+  - Nút Đóng / Huỷ và nút Submit "Tạo dự án" gửi yêu cầu POST đến API `/workspaces/{id}/projects`.
+#}
 <dialog class="task-dialog project-create-dialog" id="project-dialog" aria-labelledby="project-dialog-title">
     <form id="project-form" method="dialog">
+        <!-- Tiêu đề của Dialog -->
         <div class="dialog-heading">
             <div>
                 <p>WORKSPACE / PROJECT</p>
@@ -9,15 +17,23 @@
                 <i class="bi bi-x-lg" aria-hidden="true"></i>
             </button>
         </div>
+
+        <!-- Ô nhập Tên dự án -->
         <label class="dialog-field">
             Tên dự án
             <input name="name" maxlength="100" required placeholder="Ví dụ: Stride">
         </label>
+
+        <!-- Ô nhập Mô tả dự án -->
         <label class="dialog-field">
             Mô tả
             <textarea name="description" rows="3" maxlength="2000" placeholder="Mục tiêu và phạm vi dự án"></textarea>
         </label>
+
+        <!-- Thông báo lỗi nếu tạo dự án thất bại -->
         <p class="project-form-error" id="project-form-error" role="alert" hidden></p>
+
+        <!-- Các nút hành động: Huỷ & Tạo dự án -->
         <div class="dialog-actions">
             <span class="dialog-actions-spacer"></span>
             <button type="button" class="secondary-button" data-project-close>Hủy</button>

@@ -1,3 +1,15 @@
+/**
+ * @fileoverview Cung cấp các hàm gọi API (HTTP GET, POST, PATCH, DELETE) và quản lý thông báo cho Bảng Kanban.
+ * Tính năng chính:
+ * - `readApiJson`: Gọi GET request tới API, tự động điều hướng sang trang login nếu session hết hạn (401).
+ * - `writeApiJson`: Gọi các phương thức thay đổi dữ liệu kèm mã CSRF token tự động lấy từ `/auth/csrf`.
+ * - `loadMyTaskCount`: Cập nhật huy hiệu số việc cá nhân chưa làm.
+ * - `loadNotifications` & `renderNotifications`: Quản lý danh sách thông báo và cập nhật số lượng chưa đọc.
+ * - `startNotificationRefresh`: Thiết lập bộ đếm thời gian tải lại thông báo mỗi phút khi tab đang mở.
+ * - `persistLiveBoardOrder`: Lưu lại toàn bộ thứ tự sắp xếp các cột của bảng Kanban lên máy chủ.
+ */
+
+// Biến trạng thái toàn cục dùng chung giữa các tệp kịch bản Kanban
 let liveBoardContext = null;
 let editingTaskId = null;
 let detailTaskCard = null;
@@ -5,6 +17,11 @@ let availableWorkspaces = [];
 let availableProjects = [];
 let selectedWorkspaceId = null;
 
+/**
+ * Gửi yêu cầu GET tới API và trả về kết quả dạng JSON.
+ * @param {string} url - Đường dẫn API cần gọi.
+ * @returns {Promise<Object|null>} Dữ liệu JSON hoặc null nếu phiên đăng nhập không tồn tại.
+ */
 async function readApiJson(url) {
     const response = await fetch(url, { headers: { Accept: "application/json" } });
     const result = await response.json();
@@ -17,6 +34,9 @@ async function readApiJson(url) {
     return result;
 }
 
+/**
+ * Tải số lượng công việc cá nhân của người dùng và hiển thị lên huy hiệu `#my-task-count`.
+ */
 async function loadMyTaskCount() {
     const badge = document.querySelector("#my-task-count");
     try {
@@ -29,10 +49,19 @@ async function loadMyTaskCount() {
     }
 }
 
+/**
+ * Gửi yêu cầu ghi dữ liệu (POST, PATCH, DELETE, PUT) tới API kèm CSRF Token an toàn.
+ * 
+ * @param {string} url - Đường dẫn API.
+ * @param {'POST'|'PATCH'|'DELETE'|'PUT'} method - Phương thức HTTP.
+ * @param {Object} payload - Dữ liệu JSON gửi kèm trong body.
+ * @returns {Promise<Object>} Dữ liệu JSON phản hồi.
+ */
 async function writeApiJson(url, method, payload) {
     const tokenResponse = await fetch("/auth/csrf");
     const tokenData = await tokenResponse.json();
     if (!tokenResponse.ok) throw new Error("Không lấy được CSRF token. Hãy đăng nhập lại.");
+
     const response = await fetch(url, {
         method,
         headers: {
@@ -54,6 +83,10 @@ async function writeApiJson(url, method, payload) {
     return result;
 }
 
+/**
+ * Cập nhật số lượng thông báo chưa đọc trên biểu tượng chuông.
+ * @param {number} count - Số lượng thông báo chưa đọc.
+ */
 function updateNotificationBadge(count) {
     const unreadCount = Number(count) || 0;
     notificationBadge.hidden = unreadCount === 0;
@@ -65,6 +98,11 @@ function updateNotificationBadge(count) {
     document.querySelector("#notification-read-all").disabled = unreadCount === 0;
 }
 
+/**
+ * Định dạng mốc thời gian thông báo sang chuỗi ngày giờ tiếng Việt.
+ * @param {string} value - Chuỗi thời gian.
+ * @returns {string} Chuỗi hiển thị (ví dụ: "10:30 05/11/2026").
+ */
 function formatNotificationTime(value) {
     const parsed = new Date(`${String(value || "").replace(" ", "T")}Z`);
     return Number.isNaN(parsed.valueOf())
@@ -72,6 +110,10 @@ function formatNotificationTime(value) {
         : parsed.toLocaleString("vi-VN", { dateStyle: "short", timeStyle: "short" });
 }
 
+/**
+ * Kết xuất danh sách thông báo vào giao diện dropdown `#notification-list`.
+ * @param {Object} result - Dữ liệu danh sách thông báo và số lượng chưa đọc.
+ */
 function renderNotifications(result) {
     notificationList.replaceChildren();
     updateNotificationBadge(result.unread_count);
@@ -80,14 +122,17 @@ function renderNotifications(result) {
     const empty = document.querySelector("#notification-empty");
     empty.textContent = "Bạn chưa có thông báo nào.";
     empty.hidden = notifications.length > 0;
+
     notifications.forEach((notification) => {
         const item = document.createElement("button");
         item.type = "button";
         item.className = `notification-item${notification.is_read ? "" : " unread"}`;
         item.dataset.notificationId = String(notification.id);
+
         const dot = document.createElement("span");
         dot.className = "notification-unread-dot";
         dot.setAttribute("aria-hidden", "true");
+
         const content = document.createElement("span");
         const title = document.createElement("strong");
         title.textContent = notification.title;
@@ -95,6 +140,7 @@ function renderNotifications(result) {
         message.textContent = notification.message;
         const time = document.createElement("time");
         time.textContent = formatNotificationTime(notification.created_at);
+
         content.append(title, message, time);
         item.append(dot, content);
         item.addEventListener("click", () => openNotification(notification));
@@ -102,6 +148,9 @@ function renderNotifications(result) {
     });
 }
 
+/**
+ * Nạp danh sách thông báo mới nhất từ API `/notifications`.
+ */
 async function loadNotifications() {
     if (!liveBoardContext) return;
     try {
@@ -121,6 +170,10 @@ async function loadNotifications() {
     }
 }
 
+/**
+ * Xử lý khi click mở một thông báo: Đánh dấu đã đọc và chuyển hướng đến trang tương ứng.
+ * @param {Object} notification - Dữ liệu thông báo.
+ */
 async function openNotification(notification) {
     try {
         if (!notification.is_read) {
@@ -141,6 +194,9 @@ async function openNotification(notification) {
     }
 }
 
+/**
+ * Bắt đầu chu kỳ làm mới thông báo định kỳ mỗi 60 giây.
+ */
 function startNotificationRefresh() {
     if (notificationRefreshTimer !== null) window.clearInterval(notificationRefreshTimer);
     loadNotifications();
@@ -149,11 +205,20 @@ function startNotificationRefresh() {
     }, 60000);
 }
 
+/**
+ * Tạo URL endpoint cho các thao tác với công việc thuộc dự án hiện tại.
+ * @param {number|string|null} [taskId=null] - ID công việc (nếu thao tác trên 1 task cụ thể).
+ * @returns {string} Đường dẫn API RESTful.
+ */
 function taskUrl(taskId = null) {
     const base = `/workspaces/${liveBoardContext.workspaceId}/projects/${liveBoardContext.projectId}/tasks`;
     return taskId == null ? base : `${base}/${taskId}`;
 }
 
+/**
+ * Lấy thứ tự các ID công việc theo từng cột trạng thái trên bảng Kanban hiện tại.
+ * @returns {Object<string, Array<number>>} Đối tượng chứa danh sách ID task theo từng trạng thái.
+ */
 function liveBoardOrder() {
     return Object.fromEntries(Object.keys(taskLabels).map((status) => [
         status,
@@ -162,6 +227,9 @@ function liveBoardOrder() {
     ]));
 }
 
+/**
+ * Lưu thứ tự sắp xếp lại của toàn bộ bảng Kanban lên máy chủ qua endpoint `/reorder`.
+ */
 async function persistLiveBoardOrder() {
     const result = await writeApiJson(`${taskUrl()}/reorder`, "POST", {
         columns: liveBoardOrder(),
@@ -169,8 +237,10 @@ async function persistLiveBoardOrder() {
     renderLiveTasks(result.tasks, liveBoardContext.members);
 }
 
+/**
+ * Tải lại danh sách công việc của dự án từ máy chủ và cập nhật lại bảng.
+ */
 async function reloadLiveTasks() {
     const result = await readApiJson(taskUrl());
     renderLiveTasks(result.tasks || [], liveBoardContext.members);
 }
-

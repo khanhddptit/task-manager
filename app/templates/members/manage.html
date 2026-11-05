@@ -1,12 +1,24 @@
+{# 
+  Template: members/manage.html
+  Mục đích: Trang Quản lý Thành viên và Lời mời trong phạm vi Workspace hoặc Project.
+  Tính năng:
+  - Bảng danh sách thành viên hiện tại: avatar, tên, email, vai trò (Owner, Admin, Member), nút thao tác đổi vai trò / gỡ.
+  - Bảng danh sách lời mời đang chờ (Pending Invitations): nút gửi lại (resend) và thu hồi (revoke).
+  - Modal #resource-dialog: Sửa tên / mô tả hoặc xoá Workspace / Project.
+  - Modal #invite-dialog: Mời thành viên mới bằng email hoặc chọn nhanh từ thành viên Workspace (nếu đang ở Project).
+#}
 <!doctype html>
 <html lang="vi">
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="theme-color" content="#17191d">
+    <!-- CSRF Token cho các thao tác RESTful API -->
     <meta name="csrf-token" content="{{ csrf_token() }}">
     <meta name="referrer" content="no-referrer">
     <title>Thành viên {{ scope_name }} | Kairo</title>
+
+    <!-- Phông chữ Google Fonts & Biểu tượng Bootstrap Icons -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Manrope:wght@500;600;700;800&display=swap" rel="stylesheet">
@@ -16,112 +28,127 @@
     <link rel="stylesheet" href="{{ url_for('static', filename='css/notifications.css', v=2) }}">
 </head>
 <body class="members-page kanban-page" data-scope="{{ scope }}" data-workspace-id="{{ workspace_id }}" data-project-id="{{ project_id }}" data-members-url="{{ members_url }}" data-invitations-url="{{ invitations_url }}" data-invitation-url="{{ invitation_collection_url }}">
+    <!-- Thanh điều hướng bên (Sidebar) dùng chung -->
     {% include 'partials/layout/app-sidebar.html' %}
+
     <div class="app-shell">
-    <header class="members-topbar">
-        <div class="topbar-tools">
-            <span class="back-link" id="resource-topbar-name">
-                {{ scope_name }}
-                · Thành viên
-            </span>
-            <button class="theme-toggle" type="button" aria-label="Chuyển giao diện">
-                <i class="bi bi-moon" aria-hidden="true"></i>
-            </button>
-            {% include 'partials/notifications/panel.html' %}
-        </div>
-    </header>
-    <main class="members-main" data-workspace-id="{{ workspace_id }}" data-project-id="{{ project_id }}" data-resource-url="{% if scope == 'workspace' %}{{ url_for('workspaces.show', workspace_id=workspace_id) }}{% else %}{{ url_for('projects.detail', workspace_id=workspace_id, project_id=project_id) }}{% endif %}">
-        <nav class="breadcrumbs" aria-label="Đường dẫn">
-            <a href="{{ url_for('main.index') }}">Kairo</a>
-            <i class="bi bi-chevron-right" aria-hidden="true"></i>
-            <span id="resource-breadcrumb-name">{{ scope_name }}</span>
-            <i class="bi bi-chevron-right" aria-hidden="true"></i>
-            <span class="current">Thành viên</span>
-        </nav>
-        <section class="page-heading">
-            <div>
-                <p class="eyebrow">QUẢN LÝ {{ scope_name|upper }}</p>
-                <h1>Thành viên</h1>
-                <p class="subtitle">
-                    Quản lý những người có quyền truy cập vào {{ scope_name|lower }} này.
-                </p>
-            </div>
-            <div class="heading-actions">
-                <button id="leave-workspace" class="secondary-button danger-button" type="button" hidden>
-                    Rời Workspace
-                </button>
-                <div id="resource-actions" class="resource-actions" hidden>
-                    <button id="edit-resource" class="secondary-button" type="button">
-                        <i class="bi bi-pencil" aria-hidden="true"></i>
-                        Sửa {{ scope_name }}
-                    </button>
-                    <button id="delete-resource" class="secondary-button danger-button" type="button">
-                        <i class="bi bi-trash" aria-hidden="true"></i>
-                        Xóa {{ scope_name }}
-                    </button>
-                </div>
-                <button id="add-member" class="primary-button" type="button" hidden>
-                    <i class="bi bi-person-plus" aria-hidden="true"></i>
-                    Thêm thành viên
-                </button>
-            </div>
-        </section>
-
-        <section class="members-card" aria-labelledby="members-title">
-            <div class="card-heading">
-                <div>
-                    <h2 id="members-title">Danh sách thành viên</h2>
-                    <p id="member-count">Đang tải thành viên…</p>
-                </div>
-                <span class="scope-chip">
-                    <i class="bi bi-people" aria-hidden="true"></i>
-                    {{ scope_name }}
+        <!-- Thanh công cụ đầu trang (Topbar) -->
+        <header class="members-topbar">
+            <div class="topbar-tools">
+                <span class="back-link" id="resource-topbar-name">
+                    {{ scope_name }} · Thành viên
                 </span>
+                <!-- Nút chuyển đổi Dark/Light mode -->
+                <button class="theme-toggle" type="button" aria-label="Chuyển giao diện">
+                    <i class="bi bi-moon" aria-hidden="true"></i>
+                </button>
+                <!-- Panel thông báo thời gian thực -->
+                {% include 'partials/notifications/panel.html' %}
             </div>
-            <div class="table-wrap">
-                <table>
-                    <thead>
-                        <tr>
-                            <th scope="col">Thành viên</th>
-                            <th scope="col">Email</th>
-                            <th scope="col">Vai trò</th>
-                            <th scope="col" class="actions-heading">Thao tác</th>
-                        </tr>
-                    </thead>
-                    <tbody id="member-rows">
-                        <tr>
-                            <td colspan="4" class="loading-cell">Đang tải danh sách…</td>
-                        </tr>
-                    </tbody>
-                </table>
-            </div>
-            <p class="notice" id="page-notice" role="status" aria-live="polite" hidden></p>
-        </section>
+        </header>
 
-        <section class="members-card invitations-card" id="pending-card" hidden aria-labelledby="pending-title">
-            <div class="card-heading">
+        <!-- Khu vực nội dung quản lý thành viên -->
+        <main class="members-main" data-workspace-id="{{ workspace_id }}" data-project-id="{{ project_id }}" data-resource-url="{% if scope == 'workspace' %}{{ url_for('workspaces.show', workspace_id=workspace_id) }}{% else %}{{ url_for('projects.detail', workspace_id=workspace_id, project_id=project_id) }}{% endif %}">
+            <!-- Điều hướng đường dẫn (Breadcrumbs) -->
+            <nav class="breadcrumbs" aria-label="Đường dẫn">
+                <a href="{{ url_for('main.index') }}">Kairo</a>
+                <i class="bi bi-chevron-right" aria-hidden="true"></i>
+                <span id="resource-breadcrumb-name">{{ scope_name }}</span>
+                <i class="bi bi-chevron-right" aria-hidden="true"></i>
+                <span class="current">Thành viên</span>
+            </nav>
+
+            <!-- Tiêu đề trang & Các nút hành động chính -->
+            <section class="page-heading">
                 <div>
-                    <h2 id="pending-title">Lời mời đang chờ</h2>
-                    <p>Các lời mời có thể được thu hồi trước khi chấp nhận.</p>
+                    <p class="eyebrow">QUẢN LÝ {{ scope_name|upper }}</p>
+                    <h1>Thành viên</h1>
+                    <p class="subtitle">
+                        Quản lý những người có quyền truy cập vào {{ scope_name|lower }} này.
+                    </p>
                 </div>
-            </div>
-            <div class="table-wrap">
-                <table>
-                    <thead>
-                        <tr>
-                            <th scope="col">Email</th>
-                            <th scope="col">Vai trò</th>
-                            <th scope="col">Hết hạn</th>
-                            <th scope="col" class="actions-heading">Thao tác</th>
-                        </tr>
-                    </thead>
-                    <tbody id="invitation-rows"></tbody>
-                </table>
-            </div>
-        </section>
-    </main>
+                <div class="heading-actions">
+                    <!-- Nút Rời Workspace (hiện khi không phải là Owner) -->
+                    <button id="leave-workspace" class="secondary-button danger-button" type="button" hidden>
+                        Rời Workspace
+                    </button>
+                    <!-- Nhóm nút sửa/xoá tài nguyên (Workspace / Project) -->
+                    <div id="resource-actions" class="resource-actions" hidden>
+                        <button id="edit-resource" class="secondary-button" type="button">
+                            <i class="bi bi-pencil" aria-hidden="true"></i>
+                            Sửa {{ scope_name }}
+                        </button>
+                        <button id="delete-resource" class="secondary-button danger-button" type="button">
+                            <i class="bi bi-trash" aria-hidden="true"></i>
+                            Xóa {{ scope_name }}
+                        </button>
+                    </div>
+                    <!-- Nút Mở modal Thêm thành viên -->
+                    <button id="add-member" class="primary-button" type="button" hidden>
+                        <i class="bi bi-person-plus" aria-hidden="true"></i>
+                        Thêm thành viên
+                    </button>
+                </div>
+            </section>
+
+            <!-- Bảng 1: Danh sách thành viên hiện tại -->
+            <section class="members-card" aria-labelledby="members-title">
+                <div class="card-heading">
+                    <div>
+                        <h2 id="members-title">Danh sách thành viên</h2>
+                        <p id="member-count">Đang tải thành viên…</p>
+                    </div>
+                    <span class="scope-chip">
+                        <i class="bi bi-people" aria-hidden="true"></i>
+                        {{ scope_name }}
+                    </span>
+                </div>
+                <div class="table-wrap">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th scope="col">Thành viên</th>
+                                <th scope="col">Email</th>
+                                <th scope="col">Vai trò</th>
+                                <th scope="col" class="actions-heading">Thao tác</th>
+                            </tr>
+                        </thead>
+                        <tbody id="member-rows">
+                            <tr>
+                                <td colspan="4" class="loading-cell">Đang tải danh sách…</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+                <p class="notice" id="page-notice" role="status" aria-live="polite" hidden></p>
+            </section>
+
+            <!-- Bảng 2: Danh sách lời mời đang chờ xử lý (Pending Invitations) -->
+            <section class="members-card invitations-card" id="pending-card" hidden aria-labelledby="pending-title">
+                <div class="card-heading">
+                    <div>
+                        <h2 id="pending-title">Lời mời đang chờ</h2>
+                        <p>Các lời mời có thể được thu hồi trước khi chấp nhận.</p>
+                    </div>
+                </div>
+                <div class="table-wrap">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th scope="col">Email</th>
+                                <th scope="col">Vai trò</th>
+                                <th scope="col">Hết hạn</th>
+                                <th scope="col" class="actions-heading">Thao tác</th>
+                            </tr>
+                        </thead>
+                        <tbody id="invitation-rows"></tbody>
+                    </table>
+                </div>
+            </section>
+        </main>
     </div>
 
+    <!-- Hộp thoại Modal: Sửa tên / mô tả Workspace hoặc Project -->
     <dialog id="resource-dialog" class="invite-dialog">
         <form id="resource-form" class="dialog-form">
             <button class="dialog-close" type="button" data-close-resource-dialog aria-label="Đóng">
@@ -143,8 +170,11 @@
             </button>
         </form>
     </dialog>
+
+    <!-- Hộp thoại Modal: Mời thành viên mới (Invite Dialog) -->
     <dialog id="invite-dialog" class="invite-dialog">
         <form id="invite-form" class="dialog-form">
+            {# Nếu đang ở Project, cho phép chọn nhanh từ danh sách thành viên sẵn có trong Workspace #}
             {% if scope == 'project' %}
             <label for="workspace-member-select">Thành viên Workspace</label>
             <select id="workspace-member-select">
@@ -152,6 +182,7 @@
             </select>
             <p class="dialog-copy">Hoặc nhập email để mời người chưa thuộc Workspace.</p>
             {% endif %}
+
             <button class="dialog-close" type="button" data-close-dialog aria-label="Đóng">
                 <i class="bi bi-x-lg" aria-hidden="true"></i>
             </button>
@@ -164,6 +195,8 @@
             <input id="invite-email" name="email" type="email" autocomplete="email" maxlength="254" placeholder="name@example.com" required>
             <p class="form-error" id="invite-error" role="alert" hidden></p>
             <button class="primary-button dialog-submit" type="submit">Gửi lời mời</button>
+
+            <!-- Hộp chia sẻ liên kết mời (hiển thị sau khi tạo lời mời thành công) -->
             <section class="share-box" id="share-box" hidden>
                 <p id="email-status"></p>
                 <label for="invite-link">Liên kết mời một lần</label>
@@ -180,7 +213,9 @@
             </section>
         </form>
     </dialog>
-    <!-- Shared helpers must load before this page's member-management code. -->
+
+    <!-- Nạp thư viện Socket.IO và các script máy khách -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.7.5/socket.io.min.js"></script>
     <script src="{{ url_for('static', filename='js/members/shared.js', v=1) }}" defer></script>
     <script src="{{ url_for('static', filename='js/members/manage.js', v=1) }}" defer></script>
     <script src="{{ url_for('static', filename='js/notifications.js', v=7) }}" defer></script>

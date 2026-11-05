@@ -1,9 +1,21 @@
+/**
+ * @fileoverview Xử lý giao diện đăng nhập (Login Page).
+ * Bao gồm:
+ * - Ẩn/hiện mật khẩu trong ô nhập liệu.
+ * - Xác thực và gửi yêu cầu đăng nhập qua API `/auth/login`.
+ * - Lưu CSRF token mới vào sessionStorage sau khi đăng nhập thành công.
+ * - Điều hướng về trang đích an toàn (tránh open redirect).
+ * - Kiểm tra trạng thái Google OAuth và xử lý các mã lỗi xác thực OAuth từ URL query string.
+ */
+
+// Các phần tử DOM giao diện đăng nhập
 const passwordToggle = document.querySelector(".password-toggle");
 const passwordInput = document.querySelector("#password");
 const feedback = document.querySelector("#login-feedback");
 const loginForm = document.querySelector("#login-form");
 const submitButton = loginForm.querySelector(".login-submit");
 
+// Xử lý bật/tắt hiển thị mật khẩu (password toggle visibility)
 passwordToggle?.addEventListener("click", () => {
     const showingPassword = passwordInput.type === "password";
     passwordInput.type = showingPassword ? "text" : "password";
@@ -12,18 +24,22 @@ passwordToggle?.addEventListener("click", () => {
     passwordToggle.innerHTML = `<i class="bi ${showingPassword ? "bi-eye-slash" : "bi-eye"}" aria-hidden="true"></i>`;
 });
 
+// Xoá thông báo lỗi khi người dùng bắt đầu chỉnh sửa lại form
 loginForm.addEventListener("input", () => {
     feedback.textContent = "";
     feedback.classList.remove("is-success");
 });
 
+// Xử lý submit form đăng nhập qua Fetch API
 loginForm.addEventListener("submit", async (event) => {
     event.preventDefault();
+    // Kiểm tra tính hợp lệ cơ bản của form (HTML5 constraint validation)
     if (!loginForm.reportValidity()) return;
 
     submitButton.disabled = true;
     submitButton.textContent = "Đang đăng nhập…";
     feedback.textContent = "";
+
     try {
         const response = await fetch("/auth/login", {
             method: "POST",
@@ -36,16 +52,23 @@ loginForm.addEventListener("submit", async (event) => {
                 password: loginForm.elements.password.value,
             }),
         });
+
         const result = await response.json();
         if (!response.ok) {
             feedback.textContent = result.error?.message || "Không thể đăng nhập. Vui lòng thử lại.";
             return;
         }
+
+        // Lưu CSRF token nhận được vào sessionStorage để sử dụng cho các yêu cầu sau
         sessionStorage.setItem("kairo-csrf-token", result.csrf_token);
+
+        // Lấy đường dẫn chuyển tiếp (tham số next trên URL) nếu có
         const requestedNext = new URLSearchParams(window.location.search).get("next");
         const destination = requestedNext
             ? new URL(requestedNext, window.location.origin)
             : new URL("/tasks/", window.location.origin);
+
+        // Kiểm tra an toàn: chỉ chuyển hướng nếu cùng origin (tránh tấn công open redirect)
         window.location.assign(
             destination.origin === window.location.origin
                 ? `${destination.pathname}${destination.search}${destination.hash}`
@@ -59,8 +82,11 @@ loginForm.addEventListener("submit", async (event) => {
     }
 });
 
+// --- Phần xử lý Đăng nhập qua Google (OAuth 2.0) ---
 const googleButton = document.querySelector("[data-google-login]");
 const googleStatus = document.querySelector("#google-login-status");
+
+// Bản đồ dịch thông điệp lỗi trả về từ quy trình xác thực OAuth
 const oauthErrors = {
     google_unconfigured: "Google OAuth chưa được cấu hình.",
     google_cancelled: "Bạn đã hủy đăng nhập Google.",
@@ -74,6 +100,8 @@ const oauthErrors = {
     google_state_mismatch: "Phiên đăng nhập Google không khớp. Hãy bắt đầu lại từ nút Google.",
     google_link_required: "Email này đã có tài khoản. Đăng nhập bằng username rồi liên kết Google trong cài đặt.",
 };
+
+// Hiển thị thông báo nếu URL có chứa mã lỗi OAuth hoặc trang đích yêu cầu đăng nhập
 const loginQuery = new URLSearchParams(window.location.search);
 const oauthError = loginQuery.get("oauth_error");
 if (oauthError) {
@@ -82,6 +110,7 @@ if (oauthError) {
     feedback.textContent = "Đăng nhập để mở cài đặt tài khoản.";
 }
 
+// Kiểm tra xem dịch vụ Google OAuth có đang được kích hoạt ở backend hay không
 fetch("/auth/google/status")
     .then((response) => response.json())
     .then((result) => {
@@ -95,7 +124,7 @@ fetch("/auth/google/status")
         googleStatus.textContent = "Không kiểm tra được cấu hình Google OAuth.";
     });
 
+// Chuyển hướng người dùng sang endpoint khởi tạo xác thực Google
 googleButton.addEventListener("click", () => {
     if (!googleButton.disabled) window.location.assign("/auth/google");
 });
-

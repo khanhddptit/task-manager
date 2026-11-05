@@ -1,6 +1,12 @@
+{# 
+  Template: errors/404.html
+  Mục đích: Trang thông báo lỗi 404 - Không tìm thấy đường dẫn hoặc tài nguyên.
+  Kế thừa: base.html
+#}
 {% extends "base.html" %}
 {% block title %}Không tìm thấy trang | Task Manager{% endblock %}
 {% block content %}
+<!-- Thông báo lỗi 404 -->
 <h1>404 — Không tìm thấy trang</h1>
 <p>Đường dẫn không tồn tại hoặc đã được thay đổi.</p>
 <a class="btn btn-primary" href="{{ url_for('main.index') }}">Về trang chủ</a>

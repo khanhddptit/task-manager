@@ -1,10 +1,23 @@
+{# 
+  Partial: partials/layout/app-sidebar.html
+  Mục đích: Thanh điều hướng bên (Sidebar) dùng chung cho toàn bộ giao diện làm việc của Kairo.
+  Tính năng:
+  - Logo và tên thương hiệu Kairo.
+  - Dropdown chọn Workspace (#workspace-switcher, #workspace-menu).
+  - Menu điều hướng chính: Việc của tôi (kèm badge đếm task chưa xong), Tiến độ, Thành viên, Dự án.
+  - Cây danh mục dự án (#project-list) tự động nạp qua sidebar-projects.js.
+  - Menu tài khoản người dùng góc dưới (#profile-button, #profile-menu): avatar chữ cái đầu, cài đặt và đăng xuất.
+#}
 <aside class="sidebar" aria-label="Thanh bên">
+    <!-- Logo thương hiệu Kairo -->
     <a class="sidebar-brand" href="{{ url_for('main.index') }}">
         <span class="sidebar-brand-icon">
             <i class="bi bi-layers-fill" aria-hidden="true"></i>
         </span>
         <span><strong>Kairo</strong><small>PROJECT WORKSPACE</small></span>
     </a>
+
+    <!-- Bộ chọn Không gian làm việc (Workspace Picker) -->
     <div class="workspace-picker">
         <button class="workspace-switcher" type="button" id="workspace-switcher" aria-label="Chọn workspace" aria-expanded="false" aria-controls="workspace-menu">
             <span class="workspace-avatar" id="workspace-avatar">K</span>
@@ -18,18 +31,26 @@
             </span>
             <i class="bi bi-chevron-down" aria-hidden="true"></i>
         </button>
+        <!-- Menu danh sách workspace (được nạp động qua sidebar-projects.js) -->
         <div class="workspace-menu" id="workspace-menu" hidden></div>
     </div>
+
+    <!-- Thanh điều hướng chính (Primary Navigation) -->
     <nav class="primary-nav" aria-label="Điều hướng workspace">
+        <!-- Đường dẫn "Việc của tôi" kèm huy hiệu số lượng task chưa hoàn thành -->
         <a href="{{ url_for('tasks.my_tasks_page') }}" class="nav-link{{ ' active' if request.endpoint == 'tasks.my_tasks_page' else '' }}" id="my-tasks-link"{% if request.endpoint == 'tasks.my_tasks_page' %} aria-current="page"{% endif %}>
             <i class="bi bi-check2-square" aria-hidden="true"></i>
             <span>Việc của tôi</span>
             <span class="nav-count" id="my-task-count" hidden>0</span>
         </a>
+
+        <!-- Đường dẫn xem biểu đồ "Tiến độ" -->
         <a href="{{ url_for('sprints_pages.progress_page') }}" class="nav-link{{ ' active' if request.endpoint == 'sprints_pages.progress_page' else '' }}" id="progress-link"{% if request.endpoint == 'sprints_pages.progress_page' %} aria-current="page"{% endif %}>
             <i class="bi bi-bar-chart" aria-hidden="true"></i>
             <span>Tiến độ</span>
         </a>
+
+        <!-- Đường dẫn xem danh sách "Thành viên" -->
         {% if request.endpoint == 'project_pages.members_page' and request.view_args.get('workspace_id') and request.view_args.get('project_id') %}
             {% set top_members_url = url_for('project_pages.members_page', workspace_id=request.view_args.workspace_id, project_id=request.view_args.project_id) %}
         {% elif request.endpoint == 'workspace_pages.members_page' and request.view_args.get('workspace_id') %}
@@ -41,11 +62,15 @@
             <i class="bi bi-people" aria-hidden="true"></i>
             <span>Thành viên</span>
         </a>
+
+        <!-- Đường dẫn vào "Dự án" (Bảng Kanban) -->
         <a href="{{ url_for('tasks.index') }}" class="nav-link{{ ' active' if request.endpoint == 'tasks.index' else '' }}"{% if request.endpoint == 'tasks.index' %} aria-current="page"{% endif %}>
             <i class="bi bi-folder2" aria-hidden="true"></i>
             <span>Dự án</span>
         </a>
     </nav>
+
+    <!-- Tiêu đề mục dự án & Nút thêm dự án nhanh -->
     <div class="project-heading">
         <span>Dự án</span>
         <span class="project-heading-actions">
@@ -59,7 +84,10 @@
             {% endif %}
         </span>
     </div>
+
+    <!-- Danh sách cây dự án lồng nhau (Project Tree) nạp qua JS -->
     <div class="project-list" id="project-list" aria-label="Danh sách dự án"></div>
+
     <div class="project-tree" hidden>
         <button class="tree-project" type="button" id="project-switcher" aria-expanded="true" aria-controls="project-children">
             <i class="bi bi-chevron-down" aria-hidden="true"></i>
@@ -85,6 +113,8 @@
             </a>
         </div>
     </div>
+
+    <!-- Menu người dùng ở đáy thanh bên (Profile Menu) -->
     {% if g.user %}
         {% set account_name = g.user['display_name'] or g.user['username'] %}
         <div class="profile-menu-wrap">
@@ -111,6 +141,7 @@
             </button>
         </div>
     {% else %}
+        <!-- Trạng thái khi chưa đăng nhập -->
         <a class="profile-button" href="{{ url_for('auth_pages.login') }}" aria-label="Đăng nhập tài khoản">
             <span class="profile-avatar" id="profile-avatar">?</span>
             <span class="profile-copy">
@@ -121,6 +152,8 @@
         </a>
     {% endif %}
 </aside>
+
+<!-- Các script hỗ trợ thanh Sidebar -->
 <script src="{{ url_for('static', filename='js/utils.js', v=1) }}" defer></script>
 <script src="{{ url_for('static', filename='js/sidebar-projects.js', v=1) }}" defer></script>
 <script src="{{ url_for('static', filename='js/theme-sync.js', v=1) }}" defer></script>

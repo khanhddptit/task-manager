@@ -1,5 +1,14 @@
+{# 
+  Partial: partials/tasks/task-detail-dialog.html
+  Mục đích: Hộp thoại Modal (<dialog id="task-detail-dialog">) xem chi tiết nhiệm vụ và tương tác bình luận.
+  Tính năng:
+  - Hiển thị đầy đủ thông tin task: Mã TP-{id}, Tiêu đề, Mô tả, Trạng thái, Độ ưu tiên, Người phụ trách, Hạn chót, Sprint.
+  - Khu vực bình luận (#task-comments): Danh sách bình luận (#task-comment-list) và form thêm bình luận mới (#task-comment-form).
+  - Nút Đóng và Nút "Chỉnh sửa" mở modal cập nhật task.
+#}
 <dialog class="task-detail-dialog" id="task-detail-dialog" aria-labelledby="task-detail-title">
     <div class="task-detail-content">
+        <!-- Tiêu đề Dialog: Mã task và tên task -->
         <header class="task-detail-heading">
             <div>
                 <p id="task-detail-id">TASK</p>
@@ -9,7 +18,11 @@
                 <i class="bi bi-x-lg" aria-hidden="true"></i>
             </button>
         </header>
+
+        <!-- Mô tả chi tiết của task -->
         <p class="task-detail-description" id="task-detail-description"></p>
+
+        <!-- Lưới thông tin meta của công việc -->
         <div class="task-detail-grid">
             <div>
                 <span>Trạng thái</span>
@@ -32,12 +45,17 @@
                 <strong id="task-detail-sprint"></strong>
             </div>
         </div>
+
+        <!-- Khu vực bình luận nhiệm vụ (Task Comments) -->
         <section class="task-comments" id="task-comments">
             <div class="task-comments-heading">
                 <h3>Bình luận</h3>
                 <span id="task-comment-count">0</span>
             </div>
+            <!-- Danh sách bình luận nạp qua task-comments.js -->
             <div class="task-comment-list" id="task-comment-list" aria-live="polite"></div>
+
+            <!-- Form gửi bình luận mới -->
             <form id="task-comment-form">
                 <label for="task-comment-input">Thêm bình luận</label>
                 <textarea id="task-comment-input" name="content" rows="3" maxlength="5000" placeholder="Viết bình luận cho task…" required></textarea>
@@ -45,6 +63,8 @@
                 <button type="submit" class="secondary-button">Gửi bình luận</button>
             </form>
         </section>
+
+        <!-- Nút hành động: Đóng & Chỉnh sửa task -->
         <div class="task-detail-actions">
             <button type="button" class="secondary-button" data-detail-close>Đóng</button>
             <button type="button" class="primary-button" id="task-detail-edit">

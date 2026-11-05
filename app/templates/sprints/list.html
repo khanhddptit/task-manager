@@ -1,3 +1,12 @@
+{# 
+  Template: sprints/list.html
+  Mục đích: Trang Danh sách Sprint của Dự án.
+  Tính năng:
+  - Hiển thị các Sprint phân nhóm theo 3 trạng thái: Đang diễn ra, Đã lên kế hoạch, Đã hoàn thành.
+  - Thanh toolbar chọn nhanh dự án (#project-select) và nút Tạo Sprint (#create-sprint).
+  - Modal #sprint-dialog: Nhập tên, ngày bắt đầu, ngày kết thúc và ghi chú mục tiêu của Sprint.
+  - Sử dụng module ES6 js/sprints/page.js để điều phối dữ liệu.
+#}
 <!doctype html>
 <html lang="vi">
 <head>
@@ -5,6 +14,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="theme-color" content="#17191d">
     <title>Sprint | Kairo</title>
+
+    <!-- Phông chữ Google Fonts & Biểu tượng Bootstrap Icons -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Manrope:wght@500;600;700;800&display=swap" rel="stylesheet">
@@ -14,8 +25,11 @@
     <link rel="stylesheet" href="{{ url_for('static', filename='css/notifications.css', v=2) }}">
 </head>
 <body class="kanban-page sprint-page" data-page="sprints">
+    <!-- Thanh điều hướng bên (Sidebar) dùng chung -->
     {% include 'partials/layout/app-sidebar.html' %}
+
     <div class="app-shell">
+        <!-- Thanh công cụ trên cùng (Topbar) -->
         <header class="topbar">
             <div class="breadcrumbs">
                 <span class="breadcrumb-dot"></span>
@@ -30,7 +44,10 @@
                 {% include 'partials/notifications/panel.html' %}
             </div>
         </header>
+
+        <!-- Nội dung chính của trang Danh sách Sprint -->
         <main class="sprint-main" id="sprint-list">
+            <!-- Tiêu đề trang & Nút Tạo Sprint mới -->
             <section class="sprint-heading">
                 <div>
                     <p class="project-overline">PROJECT / DELIVERY</p>
@@ -44,6 +61,8 @@
                     Tạo Sprint
                 </button>
             </section>
+
+            <!-- Thanh công cụ chọn dự án & đếm số sprint -->
             <div class="sprint-toolbar">
                 <label for="project-select">
                     <i class="bi bi-folder2" aria-hidden="true"></i>
@@ -52,8 +71,12 @@
                 </label>
                 <span class="sprint-toolbar-note" id="sprint-count">Đang tải Sprint…</span>
             </div>
+
             <div class="sprint-notice" id="sprint-notice" role="status" hidden></div>
+
+            <!-- Các nhóm Sprint (Render qua sprint-list.js) -->
             <section class="sprint-groups" aria-live="polite">
+                <!-- Nhóm 1: Sprint đang diễn ra -->
                 <div class="sprint-group">
                     <div class="sprint-group-heading">
                         <span class="sprint-state-dot active-dot"></span>
@@ -62,6 +85,8 @@
                     </div>
                     <div class="sprint-card-grid" id="active-sprints"></div>
                 </div>
+
+                <!-- Nhóm 2: Sprint đã lên kế hoạch -->
                 <div class="sprint-group">
                     <div class="sprint-group-heading">
                         <span class="sprint-state-dot planned-dot"></span>
@@ -70,6 +95,8 @@
                     </div>
                     <div class="sprint-card-grid" id="planned-sprints"></div>
                 </div>
+
+                <!-- Nhóm 3: Sprint đã hoàn thành -->
                 <div class="sprint-group">
                     <div class="sprint-group-heading">
                         <span class="sprint-state-dot completed-dot"></span>
@@ -79,6 +106,8 @@
                     <div class="sprint-card-grid" id="completed-sprints"></div>
                 </div>
             </section>
+
+            <!-- Khối trạng thái rỗng khi chưa có Sprint nào -->
             <div class="sprint-empty" id="sprint-empty" hidden>
                 <span>
                     <i class="bi bi-lightning-charge" aria-hidden="true"></i>
@@ -91,6 +120,8 @@
             </div>
         </main>
     </div>
+
+    <!-- Hộp thoại Modal: Tạo mới / Chỉnh sửa Sprint -->
     <dialog class="sprint-dialog" id="sprint-dialog">
         <form id="sprint-form" method="dialog">
             <div class="dialog-heading">
@@ -102,10 +133,14 @@
                     <i class="bi bi-x-lg" aria-hidden="true"></i>
                 </button>
             </div>
+
+            <!-- Tên Sprint -->
             <label class="dialog-field">
                 Tên Sprint
                 <input name="name" maxlength="80" required placeholder="Ví dụ: Sprint 01">
             </label>
+
+            <!-- Thời gian: Ngày bắt đầu - Ngày kết thúc -->
             <div class="dialog-grid">
                 <label class="dialog-field">
                     Ngày bắt đầu
@@ -116,11 +151,17 @@
                     <input name="end_date" type="date" required>
                 </label>
             </div>
+
+            <!-- Ghi chú / Mục tiêu của Sprint -->
             <label class="dialog-field">
                 Ghi chú
                 <textarea name="goal" rows="3" maxlength="2000" placeholder="Ghi chú cho Sprint"></textarea>
             </label>
+
+            <!-- Thông báo lỗi -->
             <p class="sprint-form-error" id="sprint-form-error" role="alert" hidden></p>
+
+            <!-- Các nút thao tác của dialog -->
             <div class="dialog-actions">
                 <span class="dialog-actions-spacer"></span>
                 <button type="button" class="secondary-button" data-close-dialog>Hủy</button>
@@ -130,7 +171,10 @@
             </div>
         </form>
     </dialog>
+
     <div class="toast-message" id="toast-message" role="status" aria-live="polite"></div>
+
+    <!-- Nạp controller ES Module điều phối Sprint -->
     <script type="module" src="{{ url_for('static', filename='js/sprints/page.js', v=1) }}"></script>
     <script src="{{ url_for('static', filename='js/notifications.js', v=7) }}" defer></script>
 </body>

@@ -1,11 +1,22 @@
+{# 
+  Template: members/directory.html
+  Mục đích: Trang danh bạ Không gian làm việc và Dự án (Workspace Directory).
+  Tính năng:
+  - Nhúng thanh điều hướng Sidebar (`app-sidebar.html`) và hộp thông báo (`panel.html`).
+  - Danh sách thẻ lưới (`#directory-content`) hiển thị tất cả Workspace người dùng tham gia kèm các Project con.
+  - Hộp thoại Modal `#workspace-dialog` để tạo mới, đổi tên hoặc xoá Workspace (Owner).
+#}
 <!doctype html>
 <html lang="vi">
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="theme-color" content="#17191d">
+    <!-- CSRF Token cho các thao tác RESTful API -->
     <meta name="csrf-token" content="{{ csrf_token() }}">
     <title>Thành viên | Kairo</title>
+
+    <!-- Phông chữ Google Fonts & Biểu tượng Bootstrap Icons -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Manrope:wght@500;600;700;800&display=swap" rel="stylesheet">
@@ -15,42 +26,56 @@
     <link rel="stylesheet" href="{{ url_for('static', filename='css/notifications.css', v=2) }}">
 </head>
 <body class="members-page kanban-page member-directory" data-directory-url="{{ workspaces_url }}">
+    <!-- Thanh điều hướng bên (Sidebar) dùng chung -->
     {% include 'partials/layout/app-sidebar.html' %}
+
     <div class="app-shell">
-    <header class="members-topbar">
-        <div class="topbar-tools">
-            <span class="back-link">Thành viên</span>
-            <button class="theme-toggle" type="button" aria-label="Chuyển giao diện">
-                <i class="bi bi-moon" aria-hidden="true"></i>
-            </button>
-            {% include 'partials/notifications/panel.html' %}
-        </div>
-    </header>
-    <main class="members-main">
-        <nav class="breadcrumbs" aria-label="Đường dẫn">
-            <a href="{{ url_for('main.index') }}">Kairo</a>
-            <i class="bi bi-chevron-right" aria-hidden="true"></i>
-            <span class="current">Thành viên</span>
-        </nav>
-        <section class="page-heading">
-            <div>
-                <p class="eyebrow">QUẢN LÝ TRUY CẬP</p>
-                <h1>Thành viên</h1>
-                <p class="subtitle">
-                    Chọn workspace hoặc project để xem và quản lý thành viên.
-                </p>
+        <!-- Thanh công cụ đầu trang (Topbar) -->
+        <header class="members-topbar">
+            <div class="topbar-tools">
+                <span class="back-link">Thành viên</span>
+                <!-- Nút chuyển đổi Dark/Light mode -->
+                <button class="theme-toggle" type="button" aria-label="Chuyển giao diện">
+                    <i class="bi bi-moon" aria-hidden="true"></i>
+                </button>
+                <!-- Panel thông báo thời gian thực -->
+                {% include 'partials/notifications/panel.html' %}
             </div>
-                    <button id="create-workspace" class="primary-button" type="button" hidden>
-                        <i class="bi bi-plus-lg" aria-hidden="true"></i>
-                        Tạo Workspace
-                    </button>
-                </section>
-        <section id="directory-content" class="directory-grid" aria-live="polite">
-            <p class="loading-cell">Đang tải workspace…</p>
-        </section>
-        <p class="notice" id="directory-notice" role="status" aria-live="polite" hidden></p>
-    </main>
+        </header>
+
+        <!-- Khu vực nội dung chính -->
+        <main class="members-main">
+            <!-- Điều hướng đường dẫn (Breadcrumbs) -->
+            <nav class="breadcrumbs" aria-label="Đường dẫn">
+                <a href="{{ url_for('main.index') }}">Kairo</a>
+                <i class="bi bi-chevron-right" aria-hidden="true"></i>
+                <span class="current">Thành viên</span>
+            </nav>
+
+            <!-- Tiêu đề trang & Nút Tạo Workspace mới -->
+            <section class="page-heading">
+                <div>
+                    <p class="eyebrow">QUẢN LÝ TRUY CẬP</p>
+                    <h1>Thành viên</h1>
+                    <p class="subtitle">
+                        Chọn workspace hoặc project để xem và quản lý thành viên.
+                    </p>
+                </div>
+                <button id="create-workspace" class="primary-button" type="button" hidden>
+                    <i class="bi bi-plus-lg" aria-hidden="true"></i>
+                    Tạo Workspace
+                </button>
+            </section>
+
+            <!-- Danh sách lưới các Workspace và Project được render qua JS -->
+            <section id="directory-content" class="directory-grid" aria-live="polite">
+                <p class="loading-cell">Đang tải workspace…</p>
+            </section>
+            <p class="notice" id="directory-notice" role="status" aria-live="polite" hidden></p>
+        </main>
     </div>
+
+    <!-- Hộp thoại Modal: Tạo mới / Sửa / Xóa Workspace -->
     <dialog id="workspace-dialog" class="invite-dialog">
         <form id="workspace-form" class="dialog-form">
             <button class="dialog-close" type="button" data-close-workspace-dialog aria-label="Đóng">
@@ -59,14 +84,18 @@
             <p class="eyebrow">QUẢN LÝ WORKSPACE</p>
             <h2 id="workspace-dialog-title">Tạo Workspace</h2>
             <p class="dialog-copy">Tạo không gian để tổ chức project và thành viên.</p>
+
             <label for="workspace-name">Tên Workspace</label>
             <input id="workspace-name" name="name" type="text" required autocomplete="off">
+
             <label for="workspace-description" class="field-label-spaced">
                 Mô tả
                 <span>(không bắt buộc)</span>
             </label>
             <textarea id="workspace-description" name="description" rows="3"></textarea>
+
             <p class="form-error" id="workspace-error" role="alert" hidden></p>
+
             <div class="dialog-actions">
                 <button id="workspace-delete" class="secondary-button danger-button" type="button" hidden>
                     Xóa Workspace
@@ -77,7 +106,9 @@
             </div>
         </form>
     </dialog>
-    <!-- Shared helpers must load before this page's workspace-directory code. -->
+
+    <!-- Nạp thư viện Socket.IO và các script máy khách -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.7.5/socket.io.min.js"></script>
     <script src="{{ url_for('static', filename='js/members/shared.js', v=1) }}" defer></script>
     <script src="{{ url_for('static', filename='js/members/directory.js', v=1) }}" defer></script>
     <script src="{{ url_for('static', filename='js/notifications.js', v=7) }}" defer></script>

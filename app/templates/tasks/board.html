@@ -1,3 +1,13 @@
+{# 
+  Template: tasks/board.html
+  Mục đích: Giao diện chính của Bảng Kanban dự án (Kanban Board & List View).
+  Tính năng:
+  - Thanh công cụ (Toolbar): Ô tìm kiếm task, các bộ lọc (trạng thái, người phụ trách, mức độ ưu tiên), nút sắp xếp.
+  - Chuyển đổi giữa chế độ xem Bảng (Kanban Board) và chế độ xem Danh sách (List View).
+  - 4 cột trạng thái công việc kéo thả: To Do, In Progress, Review, Done (SortableJS).
+  - Tích hợp các modal dialogs: chi tiết task, tạo dự án mới, tạo/sửa task.
+  - Nạp bộ 6 kịch bản JS kanban chia tách mô-đun (board-view, api, task-comments, task-cards, board-data, board-interactions).
+#}
 <!doctype html>
 <html lang="vi">
 <head>
@@ -5,6 +15,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="theme-color" content="#17191d">
     <title>Bảng Kanban | Kairo</title>
+
+    <!-- Phông chữ Google Fonts & Biểu tượng Bootstrap Icons -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Manrope:wght@500;600;700;800&display=swap" rel="stylesheet">
@@ -14,9 +26,12 @@
 </head>
 <body class="kanban-page">
     <a class="skip-link" href="#board-main">Đến nội dung chính</a>
+
+    <!-- Thanh điều hướng bên (Sidebar) -->
     {% include 'partials/layout/app-sidebar.html' %}
 
     <div class="app-shell">
+        <!-- Thanh công cụ trên cùng (Topbar) -->
         <header class="topbar">
             <div class="breadcrumbs">
                 <span class="breadcrumb-dot"></span>
@@ -25,15 +40,20 @@
                 <span class="breadcrumb-current">Bảng Kanban</span>
             </div>
             <div class="topbar-actions">
+                <!-- Nút chuyển đổi Dark/Light mode -->
                 <button type="button" class="topbar-icon" aria-label="Đổi giao diện">
                     <i class="bi bi-moon" aria-hidden="true"></i>
                 </button>
+                <!-- Panel thông báo thời gian thực -->
                 {% include 'partials/notifications/panel.html' %}
             </div>
         </header>
 
+        <!-- Khu vực nội dung chính của bảng Kanban -->
         <main class="board-main" id="board-main">
             <p class="sr-only">Bảng Kanban của dự án hiện tại.</p>
+
+            <!-- Tiêu đề Dự án, Tổng số task & Các nút chuyển đổi chế độ xem -->
             <section class="board-heading" aria-labelledby="project-title">
                 <div>
                     <p class="project-overline">
@@ -49,10 +69,12 @@
                     </p>
                 </div>
                 <div class="heading-actions">
+                    <!-- Nút Tạo task mới (chỉ Admin mới thấy) -->
                     <button class="primary-button" type="button" data-add-task="todo" hidden>
                         <i class="bi bi-plus-lg" aria-hidden="true"></i>
                         Task mới
                     </button>
+                    <!-- Chuyển đổi giữa Board (Bảng) và List (Danh sách) -->
                     <div class="view-switch" role="group" aria-label="Chế độ xem">
                         <button type="button" class="view-button active" data-view="board" aria-pressed="true">
                             <i class="bi bi-kanban" aria-hidden="true"></i>
@@ -63,24 +85,28 @@
                             Danh sách
                         </button>
                     </div>
-            <div class="more-wrap">
-                <button type="button" class="icon-button more-button" aria-label="Thao tác khác" aria-expanded="false">
-                    <i class="bi bi-three-dots" aria-hidden="true"></i>
-                </button>
-                <div class="more-menu" hidden>
-                    <button type="button" data-action="toggle-done">Ẩn/hiện cột Done</button>
-                </div>
-            </div>
+                    <!-- Menu thao tác bổ sung: Ẩn/Hiện cột Done -->
+                    <div class="more-wrap">
+                        <button type="button" class="icon-button more-button" aria-label="Thao tác khác" aria-expanded="false">
+                            <i class="bi bi-three-dots" aria-hidden="true"></i>
+                        </button>
+                        <div class="more-menu" hidden>
+                            <button type="button" data-action="toggle-done">Ẩn/hiện cột Done</button>
+                        </div>
+                    </div>
                 </div>
             </section>
 
+            <!-- Thanh công cụ tìm kiếm, bộ lọc và sắp xếp (Toolbar) -->
             <div class="toolbar">
                 <span class="toolbar-label">HIỂN THỊ</span>
+                <!-- Ô tìm kiếm task theo tên/mô tả -->
                 <label class="board-search">
                     <i class="bi bi-search" aria-hidden="true"></i>
                     <span class="sr-only">Tìm task</span>
                     <input id="task-search" type="search" placeholder="Tìm task..." autocomplete="off">
                 </label>
+                <!-- Bộ lọc theo trạng thái -->
                 <label class="filter-control">
                     <i class="bi bi-funnel" aria-hidden="true"></i>
                     <span id="status-filter-label">Lọc</span>
@@ -93,6 +119,7 @@
                     </select>
                     <i class="bi bi-chevron-down chevron" aria-hidden="true"></i>
                 </label>
+                <!-- Bộ lọc theo người phụ trách -->
                 <label class="filter-control">
                     <i class="bi bi-person" aria-hidden="true"></i>
                     <span id="assignee-filter-label">Người phụ trách</span>
@@ -102,6 +129,7 @@
                     </select>
                     <i class="bi bi-chevron-down chevron" aria-hidden="true"></i>
                 </label>
+                <!-- Bộ lọc theo mức độ ưu tiên -->
                 <label class="filter-control">
                     <i class="bi bi-flag" aria-hidden="true"></i>
                     <span id="priority-filter-label">Ưu tiên</span>
@@ -113,19 +141,23 @@
                     </select>
                     <i class="bi bi-chevron-down chevron" aria-hidden="true"></i>
                 </label>
+                <!-- Nút sắp xếp thẻ theo tên A-Z / Z-A -->
                 <button class="filter-control sort-button" type="button" id="sort-button">
                     <i class="bi bi-arrow-down-up" aria-hidden="true"></i>
                     <span>Thứ tự</span>
                     <i class="bi bi-chevron-down chevron" aria-hidden="true"></i>
                 </button>
                 <span class="toolbar-spacer"></span>
+                <!-- Trạng thái kết nối dữ liệu máy chủ -->
                 <span class="board-status">
                     <span class="board-status-dot"></span>
                     <strong id="board-status-label">ĐANG TẢI</strong>
                 </span>
             </div>
 
+            <!-- CHẾ ĐỘ XEM 1: Bảng cột Kanban kéo thả (Kanban Board) -->
             <section class="kanban-board" id="kanban-board" aria-label="Bảng công việc">
+                <!-- Cột 1: Cần làm (To Do) -->
                 <section class="kanban-column" data-column="todo" aria-labelledby="todo-title">
                     <header class="column-header">
                         <span class="status-dot todo-dot"></span>
@@ -144,6 +176,7 @@
                     </div>
                 </section>
 
+                <!-- Cột 2: Đang thực hiện (In Progress) -->
                 <section class="kanban-column" data-column="in_progress" aria-labelledby="progress-title">
                     <header class="column-header">
                         <span class="status-dot progress-dot"></span>
@@ -161,6 +194,7 @@
                     </div>
                 </section>
 
+                <!-- Cột 3: Đang kiểm tra (Review) -->
                 <section class="kanban-column" data-column="review" aria-labelledby="review-title">
                     <header class="column-header">
                         <span class="status-dot review-dot"></span>
@@ -178,6 +212,7 @@
                     </div>
                 </section>
 
+                <!-- Cột 4: Hoàn thành (Done) -->
                 <section class="kanban-column" data-column="done" aria-labelledby="done-title">
                     <header class="column-header">
                         <span class="status-dot done-dot"></span>
@@ -196,6 +231,7 @@
                 </section>
             </section>
 
+            <!-- CHẾ ĐỘ XEM 2: Dạng bảng danh sách (List View - mặc định ẩn) -->
             <section class="list-view" id="list-view" hidden aria-label="Danh sách công việc">
                 <div class="list-header">
                     <span>Task</span>
@@ -208,13 +244,17 @@
         </main>
     </div>
 
+    <!-- Nhúng các hộp thoại Modal phụ trợ -->
     {% include 'partials/tasks/task-detail-dialog.html' %}
     {% include 'partials/tasks/project-create-dialog.html' %}
     {% include 'partials/tasks/task-form-dialog.html' %}
 
     <div class="toast-message" id="toast-message" role="status" aria-live="polite"></div>
+
+    <!-- Thư viện kéo thả SortableJS -->
     <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.6/Sortable.min.js" defer></script>
-    <!-- These classic scripts share page-level state; keep them in this order. -->
+
+    <!-- Nạp 6 module script điều khiển giao diện Kanban theo đúng thứ tự phụ thuộc -->
     <script src="{{ url_for('static', filename='js/kanban/board-view.js', v=1) }}" defer></script>
     <script src="{{ url_for('static', filename='js/kanban/api-and-notifications.js', v=1) }}" defer></script>
     <script src="{{ url_for('static', filename='js/kanban/task-comments.js', v=1) }}" defer></script>

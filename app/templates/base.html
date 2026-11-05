@@ -1,38 +1,60 @@
+{# 
+  Template: base.html
+  Mục đích: Khung giao diện cơ bản (Base layout) cho các trang hệ thống và trang lỗi (404, 500).
+  Công nghệ: Flask Jinja2 Template, Bootstrap 5.3, Socket.IO client.
+#}
 <!doctype html>
 <html lang="vi">
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
+    {# Đính kèm ID người dùng hiện tại vào meta tag để client Socket.IO đăng ký phòng thông báo #}
     {% if g.user %}
     <meta name="user-id" content="{{ g.user.id }}">
     {% endif %}
     <title>{% block title %}Kairo{% endblock %}</title>
+
+    <!-- Bootstrap 5 CSS & Phông chữ hệ thống -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css"
           rel="stylesheet"
           integrity="sha384-QWTKZyjpPEjISv5WaRU9OFeRpok6YctnYmDr5pNlyT2bRjXh0JMhjY6hW+ALEwIH"
           crossorigin="anonymous">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    {# Khối cho phép các template con nhúng thêm file CSS riêng #}
     {% block extra_css %}{% endblock %}
 </head>
 <body class="bg-light">
+    <!-- Hỗ trợ trợ năng: liên kết nhảy nhanh tới nội dung chính -->
     <a class="visually-hidden-focusable" href="#main-content">Đến nội dung chính</a>
+
+    <!-- Thanh điều hướng đầu trang (Navigation Header) -->
     <nav class="navbar navbar-dark bg-primary" aria-label="Điều hướng chính">
         <div class="container d-flex flex-wrap gap-2">
             <a class="navbar-brand" href="{{ url_for('main.index') }}">Kairo</a>
             <a class="text-white" href="{{ url_for('tasks.index') }}">Công việc</a>
         </div>
     </nav>
+
+    <!-- Nội dung chính của trang (Main Content) -->
     <main id="main-content" class="container py-5">
+        {# Hiển thị các thông báo flash từ Flask session #}
         {% for category, message in get_flashed_messages(with_categories=true) %}
             {% set alert_type = category if category in ['success', 'danger', 'warning', 'info'] else 'info' %}
             <div class="alert alert-{{ alert_type }}" role="alert">{{ message }}</div>
         {% endfor %}
+
+        {# Khối nội dung động của các trang con kế thừa #}
         {% block content %}{% endblock %}
     </main>
+
+    <!-- Chân trang (Footer) -->
     <footer class="container py-3 text-secondary border-top">
         Ứng dụng quản lý công việc · Flask &amp; SQLite
     </footer>
+
+    <!-- Thư viện kết nối Socket.IO thời gian thực -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.7.5/socket.io.min.js"></script>
+    {# Khối cho phép các template con nhúng thêm mã JavaScript riêng #}
     {% block extra_js %}{% endblock %}
 </body>
 </html>
