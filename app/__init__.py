@@ -89,6 +89,7 @@ def create_app(test_config=None):
 
     @app.errorhandler(CSRFError)
     def csrf_error(error):
+        print("CSRF ERROR DESCRIPTION:", error.description, "REQUEST HEADERS:", dict(request.headers), "SESSION:", dict(request.environ.get("beaker.session", {})))
         return api_error("csrf_failed", "CSRF token không hợp lệ hoặc đã hết hạn.", 400)
 
     @app.errorhandler(HTTPException)

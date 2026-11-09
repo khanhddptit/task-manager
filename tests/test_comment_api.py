@@ -6,6 +6,7 @@ from app.services.auth_service import register_user
 
 def get_csrf_token(client):
     response = client.get("/auth/csrf")
+    print("DEBUG LOGIN:", response.status_code, response.get_data(as_text=True))
     assert response.status_code == 200
     return response.json["csrf_token"]
 
@@ -18,6 +19,7 @@ def login(client, username, password="correct-password"):
         json={"username": username, "password": password},
         headers={"X-CSRFToken": get_csrf_token(client)},
     )
+    print("DEBUG LOGIN:", response.status_code, response.get_data(as_text=True))
     assert response.status_code == 200
     return response.json["csrf_token"]
 
@@ -160,6 +162,7 @@ def test_list_comments_ordered_by_created_at_and_id_asc(client, seeded_env, app)
         db.commit()
 
     response = client.get(url)
+    print("DEBUG LOGIN:", response.status_code, response.get_data(as_text=True))
     assert response.status_code == 200
     assert response.headers["Cache-Control"] == "no-store"
     data = response.json

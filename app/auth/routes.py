@@ -135,7 +135,9 @@ def email_taken(error):
 
 @bp.get("/csrf")
 def csrf():
-    return jsonify(csrf_token=generate_csrf())
+    token = generate_csrf()
+    print("DEBUG CSRF: cookies =", request.cookies, "session =", dict(session), "session.modified =", session.modified)
+    return jsonify(csrf_token=token)
 
 
 @bp.post("/password-reset/request")

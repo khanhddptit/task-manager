@@ -18,6 +18,7 @@ PASSWORD = "correct-password"
 
 def csrf_token(client):
     response = client.get("/auth/csrf")
+    print("IN CSRF_TOKEN FUNC SET-COOKIE:", response.headers.get("Set-Cookie"))
     assert response.status_code == 200
     assert response.headers["Cache-Control"] == "no-store"
     return response.json["csrf_token"]

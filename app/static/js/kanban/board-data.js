@@ -115,7 +115,7 @@ async function loadLiveBoardData() {
         // Hiển thị thông tin board và render các thẻ task
         updateBoardIdentity(me.user, workspace, project);
         renderLiveTasks(taskResult.tasks || [], members);
-        document.querySelector("#board-status-label").textContent = "DỮ LIỆU THẬT";
+        document.querySelector("#board-status-label").textContent = "";
         startNotificationRefresh();
 
         // 5. Nếu URL có tham số task_id, tự động mở modal chi tiết task đó
